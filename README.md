@@ -31,6 +31,7 @@ and its AI Agents.
 - [How Genie Agent Works](#how-genie-agent-works)
   - [Genie Agent intro](#genie-agent-intro)
   - [Fraud Geo Agent](#fraud-geo-agent)
+    - [What happened on this agent (simple)](#what-happened-on-this-agent-simple)
   - [This Genie Agent Runtime Behavior](#this-genie-agent-runtime-behavior)
   - [Do Pages come into the picture?](#do-pages-come-into-the-picture)
   - [Genie MCP tools this agent uses — and where to trace them](#genie-mcp-tools-this-agent-uses--and-where-to-trace-them)
@@ -597,6 +598,41 @@ Prefer `mv_order_event` only when you need counts. Seeded customers use
 English answer. Expected columns: `customer_key`, both order ids, both
 regions, both timestamps, `minutes_apart`. `LIMIT 50`. It must not say the
 tables are empty after Step 06 + 07 (or Step 100).
+
+#### What happened on this agent (simple)
+
+You opened **Fraud Geo Agent** and typed
+`Run fraud case 15 Impossible geo two regions one hour`.
+
+1. **We already taught the space** (GitHub Actions, not the chat):
+   - **Step 01** created the tables and wrote comments + primary/foreign
+     keys. That is the **metadata** (names, meanings, how tables join).
+   - **Step 02** (or **02 - Fraud Agent - 10 - Fraud Geo Agent**) attached
+     those tables, pasted the Case 15 instructions, and the five sample
+     questions.
+   - **Step 06** (inside **Step 100**) wrote the **rows**: 200 customers
+     and a Case 15 seed — first 20 people, two orders 25 minutes apart
+     (`10:00` / `10:25`), ship regions that cannot both be true
+     (`*-AGEO`).
+2. **Genie read the metadata, not the 200k rows.** It looked at
+   instructions (“join `fact_order_event`…”), table comments, column
+   names, and the join keys. Then its managed LLM **wrote SQL**. It did
+   not scan every order in its head.
+3. **The SQL warehouse ran that SQL** and sent back a small table.
+4. **You saw 20 rows** — customers `1`–`20`, orders
+   `O000000070001`–`O000000070040`, `minutes_apart = 25`, West vs another
+   region. That is the seed, not a live crime ring. Five region pairs × 4
+   customers is how we generated the addresses.
+5. **Genie wrote the English / PDF** (`Case 15 Fraud Detection_ .pdf`)
+   from those 20 rows. Spark created the seed. Genie created the story.
+   The warehouse created the query **run**. Nobody typed that `SELECT`
+   into the room.
+6. **This chat is not Genie MCP.** You will not see `genie_ask` here.
+   Same SQL appears on warehouse **Monitoring** / **Query History**.
+   Export PDF is the answer text, not a tool log.
+
+Earlier, before `fact_order_event` and the seed, the same prompt returned
+no rows. After Step 100 + data, the same prompt returns these 20 pairs.
 
 **Prompts on this agent**
 
