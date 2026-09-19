@@ -40,12 +40,43 @@ tools stay honest.
 
 ## Business Data Architecture
 
+A data warehouse turns ten years of customer activity into a place agents and
+people can ask the same question and get the same answer. Facts hold measures
+at a stated grain. Dimensions hold the who, when, what, and where. That is
+what makes amount, velocity, segment, and type comparable across 100,000
+customers without each team rewriting joins on raw OLTP.
+
+The architecture behind MCP is what makes agentic AI fraud detection safe at
+this volume. MCP does not scan 300,000 postings per customer. It lists
+`customer_id` values for a window, then hydrates one customer from star facts
+(baselines, peers, type mix) or OLTP (the supporting orders and postings).
+Genie agents read the same warehouse in the workspace. Portal agents
+(LangGraph, Google ADK, AWS Strands) call MCP. Both paths share conformed
+keys, so a velocity flag and a wire-outflow flag can be explained from the
+same customer and date.
+
 Sales fraud and funds-movement fraud share `dim_customer` and `dim_date` only.
 Do not hang wire transfers or card dues off `customer_order` / `fact_sales`.
 Add a second grain: **posting** (`customer_transaction` / `fact_transaction`)
 with account, type, counterparty, amount, and balance before/after.
 
 ![Business data architecture](docs/images/business-data-architecture.png)
+
+**Sales star** — grain is one sales line.
+
+![Sales star schema](docs/images/star-schema-sales.png)
+
+**Returns star** — grain is one return, conformed to the same customer, date, and product.
+
+![Returns star schema](docs/images/star-schema-returns.png)
+
+**Inventory star** — grain is product and store on a snapshot date (order vs stock).
+
+![Inventory star schema](docs/images/star-schema-inventory.png)
+
+**Funds-movement star** — grain is one posting. Customer and date are shared; account, type, and counterparty are new.
+
+![Funds-movement star schema](docs/images/star-schema-transactions.png)
 
 **MCP contract (customer first)**
 
