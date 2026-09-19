@@ -111,6 +111,10 @@ class WfReq(BaseModel):
     question: str = Field(default="", description="Optional single question for invoke_agents.")
     confirm: str = Field(default="", description="Must be DELETE for cleanup.")
     as_job: bool = Field(default=False, description="If true, trigger the deployed Databricks job.")
+    agent_id: str = Field(
+        default="",
+        description="Genie specialist id for create_agents (velocity, address_link, ...). Empty creates all.",
+    )
 
 
 @dataclass

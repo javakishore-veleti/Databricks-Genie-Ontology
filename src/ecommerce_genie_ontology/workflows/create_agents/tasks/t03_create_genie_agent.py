@@ -148,12 +148,20 @@ class CreateGenieAgentTask:
         self._facade = facade
 
     def run(self) -> None:
-        space_id = self._facade.upsert_genie_agent(
-            serialized_space(self._facade.fq_schema), AGENT_DESCRIPTION
-        )
-        self._facade.certify_and_tag_agent(space_id)
-        print(f"Genie agent '{self._facade.agent_title}' ready ({space_id})")
-        for agent in FRAUD_AGENTS:
+        wanted = str(getattr(self._facade, "agent_id", "") or "").strip().lower()
+        if wanted in {"", "all", "retail"}:
+            space_id = self._facade.upsert_genie_agent(
+                serialized_space(self._facade.fq_schema), AGENT_DESCRIPTION
+            )
+            self._facade.certify_and_tag_agent(space_id)
+            print(f"Genie agent '{self._facade.agent_title}' ready ({space_id})")
+            print(f"Genie MCP {self._facade.agent_title}: /api/2.0/mcp/genie/{space_id}")
+        specialists = list(FRAUD_AGENTS)
+        if wanted and wanted not in {"", "all", "retail"}:
+            specialists = [item for item in FRAUD_AGENTS if str(item["id"]) == wanted]
+            if not specialists:
+                raise SystemExit(f"Unknown fraud agent {wanted!r}")
+        for agent in specialists:
             fraud_id = self._facade.upsert_genie_agent(
                 serialized_fraud_space(self._facade.fq_schema, self._facade.fq_oltp, agent),
                 str(agent["description"]),
@@ -161,6 +169,7 @@ class CreateGenieAgentTask:
             )
             self._facade.certify_and_tag_agent(fraud_id)
             print(f"Genie fraud agent '{agent['title']}' ready ({fraud_id})")
+            print(f"Genie MCP {agent['title']}: /api/2.0/mcp/genie/{fraud_id}")
         print("Attach the retail analytics id as GENIE_SPACE_ID in .env if you want invoke to skip title lookup.")
 
 

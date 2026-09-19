@@ -1,4 +1,4 @@
-name: Create Genie agents
+name: 01 - Setup - Step 11 - Create all Genie agents
 
 on:
   workflow_dispatch:

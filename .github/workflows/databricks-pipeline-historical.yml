@@ -1,4 +1,4 @@
-name: Pipeline Historical OLTP and Star Schema
+name: 01 - Setup - Step 09 - Pipeline Historical OLTP and Star Schema
 
 on:
   workflow_dispatch:

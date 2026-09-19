@@ -1,0 +1,15 @@
+name: 02 - Fraud Agent - 09 - Fraud Cancel Agent
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  create:
+    uses: ./.github/workflows/databricks-create-one-genie-agent.yml
+    with:
+      agent_id: cancel
+      agent_title: Fraud Cancel Agent
+    secrets: inherit

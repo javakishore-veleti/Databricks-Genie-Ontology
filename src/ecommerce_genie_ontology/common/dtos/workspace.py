@@ -24,6 +24,7 @@ class WorkspaceContext:
     year_window: str = "latest"
     row_count: int = 100_000
     months: int = 3
+    agent_id: str = ""
 
     @property
     def fq_schema(self) -> str:

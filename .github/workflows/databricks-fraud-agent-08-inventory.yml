@@ -1,0 +1,15 @@
+name: 02 - Fraud Agent - 08 - Fraud Inventory Agent
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  create:
+    uses: ./.github/workflows/databricks-create-one-genie-agent.yml
+    with:
+      agent_id: inventory
+      agent_title: Fraud Inventory Agent
+    secrets: inherit

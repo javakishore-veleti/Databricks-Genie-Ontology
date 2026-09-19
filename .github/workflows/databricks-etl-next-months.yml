@@ -1,4 +1,4 @@
-name: Populate next N months of dims and facts
+name: 01 - Setup - Step 03 - Populate next N months of dims and facts
 
 on:
   workflow_dispatch:

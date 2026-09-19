@@ -288,20 +288,35 @@ uv sync
 
 Use **Actions → Run workflow**. Create starts a 3-hour timer; a later Create cancels the previous timer. Destroy can be run by hand any time before that. Pipeline workflows are also **manual** (`workflow_dispatch` only).
 
-1. **Create Databricks stack** — workspace, SQL warehouse, catalog `ecommerce_genie_ontology`, deploy Spark jobs, create the 11 Genie spaces
-2. **Create Genie agents** — same 11 spaces again (Retail Analytics + 10 fraud specialists); upsert if they already exist
-3. **Invoke Genie agents** — sample questions, or one question you type
-4. **Populate next 100000 OLTP rows** — append one batch (orders, lines, shipments, postings, `entity_link`); writes `ingestion_tracker` / `ingestion_log`
-5. **Populate next N months of dims and facts** — PySpark star load for 1–12 months (default 3): `fact_sales`, `fact_returns`, `fact_inventory`, `fact_transaction`. If less OLTP remains, loads what is there and does not fail
-6. **Pipeline next 100000 OLTP and next N months star** — steps 4 then 5
-7. **Generate Historical Data** — lab OLTP dump for N customers / years (optional; not the 100k path)
-8. **Run ETL Star Schema - Historical Data** — overwrite dims/facts from OLTP
-9. **Generate Realtime Orders Data** — 100 / 250 / 500 / 1,000 / 2,500 / 5,000 / 10,000 orders; window `latest` / `last_2` / `last_3` / `all`
-10. **Run ETL Star Schema - CDC Data** — Delta CDF into `fact_sales`
-11. **Pipeline Historical OLTP and Star Schema** — steps 7 then 8
-12. **Pipeline Realtime Orders and CDC Star Schema** — steps 9 then 10
-13. **Destroy Databricks stack in 3 hours** — queued automatically after Create
-14. **Destroy Databricks stack** — manual wipe (cancels the 3-hour timer)
+**01 - Setup**
+
+1. **01 - Setup - Step 01 - Create Databricks stack** — workspace, SQL warehouse, catalog, deploy jobs, create all 11 Genie spaces (Genie MCP)
+2. **01 - Setup - Step 02 - Populate next 100000 OLTP rows**
+3. **01 - Setup - Step 03 - Populate next N months of dims and facts**
+4. **01 - Setup - Step 04 - Pipeline next 100000 OLTP and next N months star**
+5. **01 - Setup - Step 05 - Generate Historical Data**
+6. **01 - Setup - Step 06 - Run ETL Star Schema - Historical Data**
+7. **01 - Setup - Step 07 - Generate Realtime Orders Data**
+8. **01 - Setup - Step 08 - Run ETL Star Schema - CDC Data**
+9. **01 - Setup - Step 09 - Pipeline Historical OLTP and Star Schema**
+10. **01 - Setup - Step 10 - Pipeline Realtime Orders and CDC Star Schema**
+11. **01 - Setup - Step 11 - Create all Genie agents** — Retail Analytics + 10 fraud specialists
+12. **01 - Setup - Step 12 - Invoke Retail Analytics Genie**
+13. **01 - Setup - Step 13 - Destroy Databricks stack**
+14. **01 - Setup - Step 14 - Destroy Databricks stack in 3 hours**
+
+**02 - Fraud Agent** (each Action creates that specialist’s Genie space; Databricks hosts Genie MCP at `/api/2.0/mcp/genie/{space_id}`)
+
+1. **02 - Fraud Agent - 01 - Fraud Velocity Agent**
+2. **02 - Fraud Agent - 02 - Fraud Address Link Agent**
+3. **02 - Fraud Agent - 03 - Fraud Ship-to Bill-to Agent**
+4. **02 - Fraud Agent - 04 - Fraud Returns Agent**
+5. **02 - Fraud Agent - 05 - Fraud First-Order Agent**
+6. **02 - Fraud Agent - 06 - Fraud Address Surge Agent**
+7. **02 - Fraud Agent - 07 - Fraud Promo Agent**
+8. **02 - Fraud Agent - 08 - Fraud Inventory Agent**
+9. **02 - Fraud Agent - 09 - Fraud Cancel Agent**
+10. **02 - Fraud Agent - 10 - Fraud Geo Agent**
 
 Destroy drops the catalog, deletes the warehouse and workspace, then emails `CLEANUP_NOTIFY_EMAIL` that this codebase’s Databricks demo stack is gone and should not keep billing.
 

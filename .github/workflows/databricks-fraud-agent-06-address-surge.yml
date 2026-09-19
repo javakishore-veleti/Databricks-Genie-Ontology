@@ -1,0 +1,15 @@
+name: 02 - Fraud Agent - 06 - Fraud Address Surge Agent
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  create:
+    uses: ./.github/workflows/databricks-create-one-genie-agent.yml
+    with:
+      agent_id: address_surge
+      agent_title: Fraud Address Surge Agent
+    secrets: inherit

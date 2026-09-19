@@ -1,4 +1,4 @@
-name: Pipeline Realtime Orders and CDC Star Schema
+name: 01 - Setup - Step 10 - Pipeline Realtime Orders and CDC Star Schema
 
 on:
   workflow_dispatch:

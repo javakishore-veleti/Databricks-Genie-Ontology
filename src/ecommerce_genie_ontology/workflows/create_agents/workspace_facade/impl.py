@@ -60,6 +60,10 @@ class CreateAgentsWorkspaceFacadeImpl:
     def fq_oltp(self) -> str:
         return self._session.context.fq_oltp
 
+    @property
+    def agent_id(self) -> str:
+        return self._session.context.agent_id
+
     def sql(self, statement: str) -> Any:
         return self._sql.execute(statement)
 

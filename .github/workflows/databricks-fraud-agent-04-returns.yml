@@ -1,0 +1,15 @@
+name: 02 - Fraud Agent - 04 - Fraud Returns Agent
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  create:
+    uses: ./.github/workflows/databricks-create-one-genie-agent.yml
+    with:
+      agent_id: returns
+      agent_title: Fraud Returns Agent
+    secrets: inherit

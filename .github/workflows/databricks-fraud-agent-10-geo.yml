@@ -1,0 +1,15 @@
+name: 02 - Fraud Agent - 10 - Fraud Geo Agent
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  create:
+    uses: ./.github/workflows/databricks-create-one-genie-agent.yml
+    with:
+      agent_id: geo
+      agent_title: Fraud Geo Agent
+    secrets: inherit

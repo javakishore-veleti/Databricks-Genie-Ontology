@@ -51,6 +51,7 @@ class WorkflowOrchestrator:
             "customer_count": str(settings.customer_count),
             "orders_per_year": str(settings.orders_per_year),
             "year_count": str(settings.year_count),
+            "agent_id": ctx.req.agent_id,
         }
         specs = {spec.workflow_name: spec for spec in self.job_specs()}
         for workflow_name in names:
