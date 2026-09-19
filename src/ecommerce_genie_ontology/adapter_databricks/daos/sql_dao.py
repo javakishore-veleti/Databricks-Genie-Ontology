@@ -35,6 +35,8 @@ class SqlDao:
             warehouse_id=self._session.warehouse_id,
             statement=statement,
             wait_timeout="50s",
+            catalog=self._session.catalog,
+            schema=self._session.schema_name,
         )
         deadline = time.time() + 600
         while result.status and result.status.state in _PENDING:

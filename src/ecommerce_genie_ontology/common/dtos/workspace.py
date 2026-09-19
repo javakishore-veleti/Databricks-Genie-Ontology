@@ -14,6 +14,8 @@ class WorkspaceContext:
     package_path: str
     question: str = ""
     confirm: str = ""
+    admin_emails: tuple[str, ...] = ()
+    workspace_id: int | None = None
 
     @property
     def fq_schema(self) -> str:

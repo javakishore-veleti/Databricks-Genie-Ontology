@@ -55,7 +55,26 @@ class WorkspaceSession:
 
     @classmethod
     def from_settings(cls, settings: Settings) -> WorkspaceSession:
-        workspace = build_workspace_client(settings)
+        account_workspace = _account_workspace(settings)
+        workspace = (
+            _client_for_account_workspace(account_workspace)
+            if account_workspace is not None
+            else None
+        )
+        if workspace is None and settings.host:
+            workspace = build_workspace_client(settings)
+        if workspace is None:
+            raise RuntimeError(
+                f"Workspace {settings.workspace_name!r} not found. "
+                "Run npm run ecommerce:workspace:databricks-setup first."
+            )
+        warehouse_id = settings.warehouse_id or _warehouse_id_by_name(workspace, settings.warehouse_name)
+        if not warehouse_id:
+            raise RuntimeError(
+                f"SQL warehouse {settings.warehouse_name!r} not found. "
+                "Run npm run ecommerce:warehouse:databricks-setup first."
+            )
+        _ensure_warehouse_running(workspace, warehouse_id)
         parent_path = settings.genie_parent_path
         if not parent_path:
             me = workspace.current_user.me()
@@ -64,11 +83,13 @@ class WorkspaceSession:
             context=WorkspaceContext(
                 catalog=settings.catalog,
                 schema_name=settings.schema,
-                warehouse_id=settings.warehouse_id,
+                warehouse_id=warehouse_id,
                 agent_title=settings.agent_title,
                 parent_path=parent_path,
                 space_id=settings.genie_space_id,
                 package_path=settings.package_workspace_path,
+                admin_emails=settings.admin_emails,
+                workspace_id=account_workspace.workspace_id if account_workspace else None,
             ),
             workspace=workspace,
         )
@@ -87,7 +108,7 @@ class WorkspaceSession:
             raise RuntimeError("warehouse_id widget is required for Databricks job tasks.")
         return cls(
             context=WorkspaceContext(
-                catalog=widget("catalog_name", "genie_ontology_demo"),
+                catalog=widget("catalog_name", "ecommerce_genie_ontology"),
                 schema_name=widget("schema_name", "retail_demo"),
                 warehouse_id=warehouse_id,
                 agent_title=widget("agent_title", "Retail Analytics Genie"),
@@ -100,3 +121,46 @@ class WorkspaceSession:
             workspace=WorkspaceClient(),
             spark=spark,
         )
+
+
+def _account_workspace(settings: Settings):
+    try:
+        from ecommerce_genie_ontology.adapter_databricks.account_session import AccountSession
+        from ecommerce_genie_ontology.common.dtos.account import AccountSettings
+
+        account = AccountSession.from_settings(AccountSettings.load())
+        for workspace in account.account.workspaces.list():
+            if workspace.workspace_name == settings.workspace_name:
+                return workspace
+    except Exception:
+        return None
+    return None
+
+
+def _client_for_account_workspace(workspace) -> WorkspaceClient:
+    from ecommerce_genie_ontology.adapter_databricks.account_session import AccountSession
+    from ecommerce_genie_ontology.common.dtos.account import AccountSettings
+
+    account = AccountSession.from_settings(AccountSettings.load())
+    return account.account.get_workspace_client(workspace)
+
+
+def _warehouse_id_by_name(client: WorkspaceClient, name: str) -> str:
+    for warehouse in client.warehouses.list():
+        if warehouse.name == name and warehouse.id:
+            return warehouse.id
+    return ""
+
+
+def _ensure_warehouse_running(client: WorkspaceClient, warehouse_id: str) -> None:
+    warehouse = client.warehouses.get(warehouse_id)
+    state = warehouse.state.value if getattr(warehouse, "state", None) else ""
+    if state in {"RUNNING", "STARTING"}:
+        if state == "STARTING":
+            client.warehouses.wait_get_warehouse_running(warehouse_id)
+        return
+    if hasattr(client.warehouses, "start_and_wait"):
+        client.warehouses.start_and_wait(warehouse_id)
+        return
+    client.warehouses.start(warehouse_id)
+    client.warehouses.wait_get_warehouse_running(warehouse_id)

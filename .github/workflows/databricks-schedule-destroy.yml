@@ -1,0 +1,32 @@
+name: Destroy Databricks stack in 3 hours
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: databricks-delayed-destroy
+  cancel-in-progress: true
+
+jobs:
+  wait:
+    runs-on: ubuntu-latest
+    timeout-minutes: 210
+    steps:
+      - name: Wait 3 hours after latest create
+        run: |
+          echo "Waiting 3 hours after the latest Create Databricks stack run."
+          echo "A new Create run, or a manual Destroy Databricks stack run, cancels this timer."
+          sleep 10800
+
+  destroy:
+    needs: wait
+    uses: ./.github/workflows/databricks-destroy.yml
+    with:
+      confirm: DELETE
+      cancel_timer: false
+    secrets: inherit

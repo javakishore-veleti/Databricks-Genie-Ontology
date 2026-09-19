@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from ecommerce_genie_ontology.common.utils.env import load_env, optional_env, required_env
+from ecommerce_genie_ontology.common.utils.env import env_emails, load_env, optional_env
 
 
 @dataclass(frozen=True)
@@ -11,8 +11,11 @@ class Settings:
     host: str
     token: str
     warehouse_id: str
+    warehouse_name: str
+    workspace_name: str
     catalog: str
     schema: str
+    admin_emails: tuple[str, ...]
     workspace_path: str
     agent_title: str
     client_id: str
@@ -38,7 +41,7 @@ class Settings:
     @classmethod
     def load(cls) -> Settings:
         env_file = load_env()
-        host = required_env("DATABRICKS_HOST").rstrip("/")
+        host = optional_env("DATABRICKS_HOST").rstrip("/")
         token = optional_env("DATABRICKS_TOKEN")
         client_id = optional_env("DATABRICKS_CLIENT_ID")
         client_secret = optional_env("DATABRICKS_CLIENT_SECRET")
@@ -49,9 +52,12 @@ class Settings:
         return cls(
             host=host,
             token=token,
-            warehouse_id=required_env("DATABRICKS_WAREHOUSE_ID"),
-            catalog=optional_env("DATABRICKS_CATALOG", "genie_ontology_demo"),
+            warehouse_id=optional_env("DATABRICKS_WAREHOUSE_ID"),
+            warehouse_name=optional_env("DATABRICKS_WAREHOUSE_NAME", "ecommerce-genie-ontology"),
+            workspace_name=optional_env("DATABRICKS_WORKSPACE_NAME", "ecommerce-genie-ontology"),
+            catalog=optional_env("DATABRICKS_CATALOG", "ecommerce_genie_ontology"),
             schema=optional_env("DATABRICKS_SCHEMA", "retail_demo"),
+            admin_emails=env_emails("DATABRICKS_WORKSPACE_ADMIN_EMAILS"),
             workspace_path=optional_env(
                 "DATABRICKS_WORKSPACE_PATH", "/Workspace/Shared/ecommerce-genie-ontology"
             ),

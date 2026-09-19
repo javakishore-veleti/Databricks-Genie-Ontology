@@ -3,11 +3,11 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from ecommerce_genie_ontology.api.objects_factory import ApiObjectsFactory
-from ecommerce_genie_ontology.api.routers import HealthRouter, WorkflowsRouter
+from ecommerce_genie_ontology.api.routers import HealthRouter, OntologyRouter
 
 
 class ApiApp:
-    def __init__(self, health: HealthRouter, workflows: WorkflowsRouter) -> None:
+    def __init__(self, health: HealthRouter, ontology: OntologyRouter) -> None:
         self._app = FastAPI(
             title="Ecommerce Genie Ontology",
             description=(
@@ -16,7 +16,7 @@ class ApiApp:
             ),
         )
         self._app.include_router(health.router)
-        self._app.include_router(workflows.router)
+        self._app.include_router(ontology.router)
 
     def asgi(self) -> FastAPI:
         return self._app

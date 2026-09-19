@@ -1,0 +1,100 @@
+name: Destroy Databricks stack
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type DELETE to drop the catalog and delete the warehouse and workspace
+        required: true
+        default: DELETE
+        type: string
+  workflow_call:
+    inputs:
+      confirm:
+        description: Must be DELETE
+        required: false
+        default: DELETE
+        type: string
+      cancel_timer:
+        description: Cancel the 3-hour delayed destroy timer
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  cancel-timer:
+    if: github.event_name == 'workflow_dispatch' || inputs.cancel_timer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel delayed destroy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for status in in_progress queued; do
+            ids=$(gh run list --workflow databricks-schedule-destroy.yml --status "$status" --json databaseId --jq '.[].databaseId' || true)
+            for id in $ids; do
+              if [ "$id" != "${{ github.run_id }}" ]; then
+                echo "Cancelling delayed destroy run $id"
+                gh run cancel "$id" || true
+              fi
+            done
+          done
+
+  destroy:
+    needs: cancel-timer
+    if: always() && needs.cancel-timer.result != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABRICKS_ACCOUNT_ID: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
+      DATABRICKS_ACCOUNT_HOST: ${{ secrets.DATABRICKS_ACCOUNT_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_WORKSPACE_NAME: ${{ secrets.DATABRICKS_WORKSPACE_NAME }}
+      DATABRICKS_AWS_REGION: ${{ secrets.DATABRICKS_AWS_REGION }}
+      DATABRICKS_WORKSPACE_ADMIN_EMAILS: ${{ secrets.DATABRICKS_WORKSPACE_ADMIN_EMAILS }}
+      DATABRICKS_WAREHOUSE_NAME: ${{ secrets.DATABRICKS_WAREHOUSE_NAME }}
+      DATABRICKS_CATALOG: ${{ secrets.DATABRICKS_CATALOG }}
+      DATABRICKS_SCHEMA: ${{ secrets.DATABRICKS_SCHEMA }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Databricks env
+        uses: ./.github/actions/setup-databricks
+      - name: Destroy catalog, warehouse, and workspace
+        run: uv run genie-ontology run destroy --confirm "${{ inputs.confirm }}"
+
+  notify:
+    needs: destroy
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Email cleanup confirmation
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_HOST }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          secure: ${{ secrets.SMTP_PORT == '465' }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: Databricks ecommerce-genie-ontology cleaned — no further demo billing
+          to: ${{ secrets.CLEANUP_NOTIFY_EMAIL }}
+          from: ${{ secrets.SMTP_FROM || secrets.SMTP_USERNAME }}
+          body: |
+            The Databricks resources created by the Databricks-Genie-Ontology codebase were destroyed.
+
+            Removed:
+            - Unity Catalog ecommerce_genie_ontology (schema, tables, metric views)
+            - SQL warehouse ecommerce-genie-ontology
+            - Workspace ecommerce-genie-ontology
+
+            This demo stack should no longer generate Databricks compute billing.
+
+            If you did not expect this email, check the Destroy Databricks stack workflow in GitHub Actions.

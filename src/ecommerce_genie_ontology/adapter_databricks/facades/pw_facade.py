@@ -26,10 +26,12 @@ class PwFacadeImpl:
             )
             if workspace.workspace_id:
                 workspace = self._account.wait_running(workspace.workspace_id)
-        _fill(ctx, workspace, created)
+        emails = list(dict.fromkeys([*ctx.req.admin_emails, *self._account.settings.admin_emails]))
+        assigned = self._account.assign_workspace_admins(workspace, emails)
+        _fill(ctx, workspace, created, assigned)
 
 
-def _fill(ctx: PwCtx, workspace: Workspace, created: bool) -> None:
+def _fill(ctx: PwCtx, workspace: Workspace, created: bool, assigned: list[str]) -> None:
     status = workspace.workspace_status.value if workspace.workspace_status else ""
     deployment = workspace.deployment_name or ""
     host = f"https://{deployment}.cloud.databricks.com" if deployment else ""
@@ -39,9 +41,11 @@ def _fill(ctx: PwCtx, workspace: Workspace, created: bool) -> None:
     ctx.resp.aws_region = workspace.aws_region or ctx.req.aws_region
     ctx.resp.workspace_status = status
     ctx.resp.created = created
-    ctx.resp.message = workspace.workspace_status_message or (
-        "created" if created else "already existed"
-    )
+    assigned_note = f" Admins: {', '.join(assigned)}." if assigned else ""
+    ctx.resp.message = (
+        workspace.workspace_status_message
+        or ("created" if created else "already existed")
+    ) + assigned_note
 
 
 def _assert_protocol() -> None:

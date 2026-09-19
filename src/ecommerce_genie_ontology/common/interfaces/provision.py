@@ -9,6 +9,7 @@ class ProvisionWorkspaceFacade(Protocol):
     warehouse_id: str
     agent_title: str
     spark: Any
+    admin_emails: tuple[str, ...]
 
     @property
     def fq_schema(self) -> str: ...
@@ -28,3 +29,5 @@ class ProvisionWorkspaceFacade(Protocol):
     def ensure_domain_tag_policies(self, domain_names: list[str]) -> None: ...
 
     def try_create_page(self, page: dict) -> bool: ...
+
+    def share_catalog(self) -> None: ...

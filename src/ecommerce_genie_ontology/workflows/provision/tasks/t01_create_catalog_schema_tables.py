@@ -7,6 +7,18 @@ import pandas as pd
 
 from ecommerce_genie_ontology.common.interfaces.provision import ProvisionWorkspaceFacade
 
+
+def _grant_catalog(facade: ProvisionWorkspaceFacade) -> None:
+    catalog = facade.catalog
+    facade.sql_ok(f"GRANT USE CATALOG ON CATALOG {catalog} TO `account users`")
+    facade.sql_ok(f"GRANT USE SCHEMA ON CATALOG {catalog} TO `account users`")
+    facade.sql_ok(f"GRANT SELECT ON CATALOG {catalog} TO `account users`")
+    facade.sql_ok(f"GRANT BROWSE ON CATALOG {catalog} TO `account users`")
+    for email in facade.admin_emails:
+        principal = email.replace("`", "")
+        facade.sql_ok(f"GRANT ALL PRIVILEGES ON CATALOG {catalog} TO `{principal}`")
+
+
 def _create_tables(facade: ProvisionWorkspaceFacade) -> None:
     fq = facade.fq_schema
     facade.sql(
@@ -15,15 +27,16 @@ CREATE CATALOG IF NOT EXISTS {facade.catalog}
 COMMENT 'Genie One + Genie Ontology demo catalog (Northwind Retail sales analytics)'
 """
     )
+    _grant_catalog(facade)
+    facade.share_catalog()
     facade.sql(
         f"""
 CREATE SCHEMA IF NOT EXISTS {fq}
 COMMENT 'Star schema: sales, returns and inventory facts with conformed date/product/customer/store dimensions'
 """
     )
-    if facade.spark is not None:
-        facade.spark.sql(f"USE CATALOG {facade.catalog}")
-        facade.spark.sql(f"USE SCHEMA {facade.schema_name}")
+    facade.sql(f"USE CATALOG {facade.catalog}")
+    facade.sql(f"USE SCHEMA {facade.schema_name}")
 
     facade.sql(
         f"""

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from ecommerce_genie_ontology.common.dtos.jobs import JobSpec
-from ecommerce_genie_ontology.common.dtos.ontology import DpCtx, LsCtx, PwCtx, WfCtx
+from ecommerce_genie_ontology.common.dtos.ontology import DpCtx, LsCtx, PwCtx, DyCtx, TcCtx, WfCtx, WhCtx
 
 
 class WorkflowTask(Protocol):
@@ -28,5 +28,11 @@ class WorkflowRunner(Protocol):
     def list_workflows(self, ctx: LsCtx) -> None: ...
 
     def provision_workspace(self, ctx: PwCtx) -> None: ...
+
+    def provision_warehouse(self, ctx: WhCtx) -> None: ...
+
+    def truncate(self, ctx: TcCtx) -> None: ...
+
+    def destroy(self, ctx: DyCtx) -> None: ...
 
     def job_specs(self) -> list[JobSpec]: ...

@@ -12,6 +12,10 @@ from ecommerce_genie_ontology.common.interfaces.create_agents import CreateAgent
 from ecommerce_genie_ontology.common.interfaces.invoke_agents import InvokeAgentsWorkspaceFacade
 from ecommerce_genie_ontology.common.interfaces.jobs import JobsFacade
 from ecommerce_genie_ontology.common.interfaces.provision import ProvisionWorkspaceFacade
+from ecommerce_genie_ontology.common.interfaces.pw import PwFacade
+from ecommerce_genie_ontology.common.interfaces.dy import DyFacade
+from ecommerce_genie_ontology.common.interfaces.tc import TcFacade
+from ecommerce_genie_ontology.common.interfaces.wh import WhFacade
 from ecommerce_genie_ontology.common.interfaces.workflow import Workflow, WorkflowRunner, WorkflowTask
 from ecommerce_genie_ontology.common.utils.objects_factory import ObjectsFactory
 from ecommerce_genie_ontology.workflows.cleanup.tasks.t06_cleanup import CleanupAssetsTask
@@ -70,6 +74,18 @@ class WorkflowsObjectsFactory(ObjectsFactory):
 
     def jobs_facade(self) -> JobsFacade:
         return self.adapter_factory().jobs_facade()
+
+    def pw_facade(self) -> PwFacade:
+        return self.adapter_factory().pw_facade()
+
+    def wh_facade(self) -> WhFacade:
+        return self.adapter_factory().wh_facade()
+
+    def tc_facade(self) -> TcFacade:
+        return self.adapter_factory().tc_facade()
+
+    def dy_facade(self) -> DyFacade:
+        return self.adapter_factory().dy_facade()
 
     def provision_workspace_facade(self) -> ProvisionWorkspaceFacade:
         return self.singleton(

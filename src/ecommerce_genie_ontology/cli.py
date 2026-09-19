@@ -4,7 +4,28 @@ from __future__ import annotations
 
 import argparse
 
+from ecommerce_genie_ontology.common.dtos.ontology import (
+    DpCtx,
+    DpReq,
+    DpResp,
+    PwCtx,
+    PwReq,
+    PwResp,
+    DyCtx,
+    DyReq,
+    DyResp,
+    TcCtx,
+    TcReq,
+    TcResp,
+    WfCtx,
+    WfReq,
+    WfResp,
+    WhCtx,
+    WhReq,
+    WhResp,
+)
 from ecommerce_genie_ontology.common.interfaces.workflow import WorkflowRunner
+from ecommerce_genie_ontology.common.utils.env import find_env_file, load_env
 from ecommerce_genie_ontology.workflows.objects_factory import WorkflowsObjectsFactory
 
 
@@ -15,20 +36,61 @@ class CliApp:
     def main(self, argv: list[str] | None = None) -> int:
         parser = self._build_parser()
         args = parser.parse_args(argv)
-        settings = WorkflowsObjectsFactory.instance().settings()
-        if settings.env_file:
-            print(f"Loaded credentials from {settings.env_file}")
+        env_file = load_env()
+        if env_file or find_env_file():
+            print(f"Loaded credentials from {env_file or find_env_file()}")
         else:
             print("No .env file found; using process environment")
 
         if args.command == "deploy":
-            self._runner.deploy()
+            ctx = DpCtx(DpReq(), DpResp())
+            self._runner.deploy(ctx)
             return 0
         if args.command == "run":
+            if args.workflow == "provision_workspace":
+                ctx = PwCtx(PwReq(), PwResp())
+                self._runner.provision_workspace(ctx)
+                print(ctx.resp)
+                return 0
+            if args.workflow == "provision_warehouse":
+                ctx = WhCtx(WhReq(), WhResp())
+                self._runner.provision_warehouse(ctx)
+                print(ctx.resp)
+                return 0
+            if args.workflow == "truncate":
+                ctx = TcCtx(
+                    TcReq(catalog=args.catalog, confirm=args.confirm),
+                    TcResp(),
+                )
+                self._runner.truncate(ctx)
+                print(ctx.resp)
+                return 0
+            if args.workflow == "destroy":
+                ctx = DyCtx(
+                    DyReq(
+                        workspace_name=args.workspace_name,
+                        warehouse_name=args.warehouse_name,
+                        catalog=args.catalog,
+                        confirm=args.confirm,
+                    ),
+                    DyResp(),
+                )
+                self._runner.destroy(ctx)
+                print(ctx.resp)
+                return 0
+            ctx = WfCtx(
+                WfReq(
+                    workflow=args.workflow,
+                    question=args.question,
+                    confirm=args.confirm,
+                    as_job=args.as_job,
+                ),
+                WfResp(),
+            )
             if args.as_job:
-                self._runner.trigger(args.workflow, confirm=args.confirm)
+                self._runner.trigger(ctx)
             else:
-                self._runner.run(args.workflow, question=args.question, confirm=args.confirm)
+                self._runner.run(ctx)
             return 0
         if args.command == "serve":
             self._serve(args.host, args.port)
@@ -55,8 +117,18 @@ class CliApp:
         run = sub.add_parser("run", help="Run a workflow locally (default) or as a Databricks job")
         run.add_argument(
             "workflow",
-            choices=["provision", "create_agents", "invoke_agents", "cleanup", "all"],
-            help="Workflow to run. 'all' is provision, then create_agents, then invoke_agents.",
+            choices=[
+                "provision_workspace",
+                "provision_warehouse",
+                "provision",
+                "create_agents",
+                "invoke_agents",
+                "cleanup",
+                "truncate",
+                "destroy",
+                "all",
+            ],
+            help="Workflow to run.",
         )
         run.add_argument(
             "--as-job",
@@ -64,7 +136,22 @@ class CliApp:
             help="Trigger the Databricks workflow created by `deploy` instead of running locally.",
         )
         run.add_argument("--question", default="", help="Override invoke_agents with a single question")
-        run.add_argument("--confirm", default="", help="Required value DELETE for the cleanup workflow")
+        run.add_argument("--confirm", default="", help="Required value DELETE for destroy, truncate, and cleanup")
+        run.add_argument(
+            "--catalog",
+            default="",
+            help="Catalog for truncate/destroy. Empty uses DATABRICKS_CATALOG.",
+        )
+        run.add_argument(
+            "--workspace-name",
+            default="",
+            help="Workspace for destroy. Empty uses DATABRICKS_WORKSPACE_NAME.",
+        )
+        run.add_argument(
+            "--warehouse-name",
+            default="",
+            help="Warehouse for destroy. Empty uses DATABRICKS_WAREHOUSE_NAME.",
+        )
         serve = sub.add_parser("serve", help="Start the FastAPI HTTP interface")
         serve.add_argument("--host", default="127.0.0.1")
         serve.add_argument("--port", type=int, default=8000)

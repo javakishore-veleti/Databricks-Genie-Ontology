@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from ecommerce_genie_ontology.adapter_databricks.account_session import AccountSession
+from ecommerce_genie_ontology.adapter_databricks.daos.account_dao import AccountDao
 from ecommerce_genie_ontology.adapter_databricks.daos.genie_dao import GenieDao
 from ecommerce_genie_ontology.adapter_databricks.daos.jobs_dao import JobsDao
 from ecommerce_genie_ontology.adapter_databricks.daos.sql_dao import SqlDao
@@ -11,13 +13,22 @@ from ecommerce_genie_ontology.adapter_databricks.daos.tags_dao import TagsDao
 from ecommerce_genie_ontology.adapter_databricks.facades.genie_facade import GenieFacadeImpl
 from ecommerce_genie_ontology.adapter_databricks.facades.governance_facade import GovernanceFacadeImpl
 from ecommerce_genie_ontology.adapter_databricks.facades.jobs_facade import JobsFacadeImpl
+from ecommerce_genie_ontology.adapter_databricks.facades.dy_facade import DyFacadeImpl
+from ecommerce_genie_ontology.adapter_databricks.facades.pw_facade import PwFacadeImpl
 from ecommerce_genie_ontology.adapter_databricks.facades.sql_facade import SqlFacadeImpl
+from ecommerce_genie_ontology.adapter_databricks.facades.tc_facade import TcFacadeImpl
+from ecommerce_genie_ontology.adapter_databricks.facades.wh_facade import WhFacadeImpl
 from ecommerce_genie_ontology.adapter_databricks.session import WorkspaceSession
+from ecommerce_genie_ontology.common.dtos.account import AccountSettings
 from ecommerce_genie_ontology.common.dtos.settings import Settings
 from ecommerce_genie_ontology.common.interfaces.genie import GenieFacade
 from ecommerce_genie_ontology.common.interfaces.governance import GovernanceFacade
 from ecommerce_genie_ontology.common.interfaces.jobs import JobsFacade
+from ecommerce_genie_ontology.common.interfaces.dy import DyFacade
+from ecommerce_genie_ontology.common.interfaces.pw import PwFacade
 from ecommerce_genie_ontology.common.interfaces.sql import SqlFacade
+from ecommerce_genie_ontology.common.interfaces.tc import TcFacade
+from ecommerce_genie_ontology.common.interfaces.wh import WhFacade
 from ecommerce_genie_ontology.common.utils.objects_factory import ObjectsFactory
 
 
@@ -77,4 +88,34 @@ class AdapterDatabricksObjectsFactory(ObjectsFactory):
         return self.singleton(
             "jobs_facade",
             lambda: JobsFacadeImpl(self.jobs_dao(), self.settings()),
+        )
+
+    def account_settings(self) -> AccountSettings:
+        return self.singleton("account_settings", AccountSettings.load)
+
+    def account_session(self) -> AccountSession:
+        return self.singleton(
+            "account_session",
+            lambda: AccountSession.from_settings(self.account_settings()),
+        )
+
+    def account_dao(self) -> AccountDao:
+        return self.singleton("account_dao", lambda: AccountDao(self.account_session()))
+
+    def pw_facade(self) -> PwFacade:
+        return self.singleton("pw_facade", lambda: PwFacadeImpl(self.account_dao()))
+
+    def wh_facade(self) -> WhFacade:
+        return self.singleton("wh_facade", lambda: WhFacadeImpl(self.account_dao()))
+
+    def tc_facade(self) -> TcFacade:
+        return self.singleton(
+            "tc_facade",
+            lambda: TcFacadeImpl(self.session(), self.sql_facade(), self.genie_facade()),
+        )
+
+    def dy_facade(self) -> DyFacade:
+        return self.singleton(
+            "dy_facade",
+            lambda: DyFacadeImpl(self.account_dao(), self.settings()),
         )

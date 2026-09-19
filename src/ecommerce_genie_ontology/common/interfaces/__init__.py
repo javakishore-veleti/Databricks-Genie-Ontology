@@ -7,7 +7,10 @@ from ecommerce_genie_ontology.common.interfaces.invoke_agents import InvokeAgent
 from ecommerce_genie_ontology.common.interfaces.jobs import JobsFacade
 from ecommerce_genie_ontology.common.interfaces.provision import ProvisionWorkspaceFacade
 from ecommerce_genie_ontology.common.interfaces.pw import PwFacade
+from ecommerce_genie_ontology.common.interfaces.dy import DyFacade
 from ecommerce_genie_ontology.common.interfaces.sql import SqlFacade
+from ecommerce_genie_ontology.common.interfaces.tc import TcFacade
+from ecommerce_genie_ontology.common.interfaces.wh import WhFacade
 from ecommerce_genie_ontology.common.interfaces.workflow import Workflow, WorkflowRunner, WorkflowTask
 
 __all__ = [
@@ -20,7 +23,10 @@ __all__ = [
     "JobsFacade",
     "ProvisionWorkspaceFacade",
     "PwFacade",
+    "DyFacade",
     "SqlFacade",
+    "TcFacade",
+    "WhFacade",
     "Workflow",
     "WorkflowRunner",
     "WorkflowTask",

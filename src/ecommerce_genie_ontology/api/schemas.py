@@ -1,28 +1,41 @@
-from __future__ import annotations
+"""OpenAPI models: `*Req` request bodies and `*RespResult` HTTP results."""
 
-from pydantic import BaseModel, Field
+from ecommerce_genie_ontology.common.dtos.ontology import (
+    DpReq,
+    DpRespResult,
+    HlReq,
+    HlRespResult,
+    LsReq,
+    LsRespResult,
+    PwReq,
+    PwRespResult,
+    DyReq,
+    DyRespResult,
+    TcReq,
+    TcRespResult,
+    WfItemResult,
+    WfReq,
+    WfRespResult,
+    WhReq,
+    WhRespResult,
+)
 
-
-class WorkflowSummary(BaseModel):
-    name: str
-    job_name: str
-    description: str
-    tasks: list[str] = Field(default_factory=list)
-
-
-class WorkflowRunBody(BaseModel):
-    question: str = ""
-    confirm: str = ""
-    as_job: bool = False
-
-
-class WorkflowRunResponse(BaseModel):
-    workflow: str
-    status: str
-    message: str = ""
-    job_ids: dict[str, int] = Field(default_factory=dict)
-
-
-class DeployResponse(BaseModel):
-    status: str
-    job_ids: dict[str, int]
+__all__ = [
+    "DpReq",
+    "DpRespResult",
+    "HlReq",
+    "HlRespResult",
+    "LsReq",
+    "LsRespResult",
+    "PwReq",
+    "PwRespResult",
+    "DyReq",
+    "DyRespResult",
+    "TcReq",
+    "TcRespResult",
+    "WfItemResult",
+    "WfReq",
+    "WfRespResult",
+    "WhReq",
+    "WhRespResult",
+]

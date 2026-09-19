@@ -118,7 +118,7 @@ class JobsDao:
         return [
             JobParameterDefinition(name="catalog_name", default=self._settings.catalog),
             JobParameterDefinition(name="schema_name", default=self._settings.schema),
-            JobParameterDefinition(name="warehouse_id", default=self._settings.warehouse_id),
+            JobParameterDefinition(name="warehouse_id", default=self._session.warehouse_id),
             JobParameterDefinition(name="parent_path", default=self._session.parent_path),
             JobParameterDefinition(name="agent_title", default=self._settings.agent_title),
             JobParameterDefinition(name="space_id", default=self._settings.genie_space_id),
@@ -145,7 +145,7 @@ class JobsDao:
     @staticmethod
     def _notebook_source(task_module: str, facade_module: str, facade_class: str) -> str:
         return f"""# Databricks notebook source
-dbutils.widgets.text("catalog_name", "genie_ontology_demo", "Catalog name")
+dbutils.widgets.text("catalog_name", "ecommerce_genie_ontology", "Catalog name")
 dbutils.widgets.text("schema_name", "retail_demo", "Schema name")
 dbutils.widgets.text("warehouse_id", "", "SQL warehouse ID")
 dbutils.widgets.text("parent_path", "", "Genie agent parent folder")

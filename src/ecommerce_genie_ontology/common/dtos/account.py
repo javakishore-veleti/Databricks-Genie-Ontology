@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ecommerce_genie_ontology.common.utils.env import load_env, optional_env, required_env
+from ecommerce_genie_ontology.common.utils.env import env_emails, load_env, optional_env, required_env
 
 
 @dataclass(frozen=True)
@@ -15,6 +15,7 @@ class AccountSettings:
     workspace_name: str
     aws_region: str
     pricing_tier: str
+    admin_emails: tuple[str, ...]
 
     @classmethod
     def load(cls) -> AccountSettings:
@@ -38,6 +39,7 @@ class AccountSettings:
             workspace_name=optional_env("DATABRICKS_WORKSPACE_NAME", "ecommerce-genie-ontology"),
             aws_region=optional_env("DATABRICKS_AWS_REGION", "us-east-1"),
             pricing_tier=optional_env("DATABRICKS_PRICING_TIER", "PREMIUM"),
+            admin_emails=env_emails("DATABRICKS_WORKSPACE_ADMIN_EMAILS"),
         )
 
 

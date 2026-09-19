@@ -1,0 +1,15 @@
+{
+  "name": "databricks-genie-ontology",
+  "private": true,
+  "description": "npm task runner for the ecommerce Genie Ontology FastAPI and Databricks workspace setup",
+  "scripts": {
+    "ecommerce:api:run": "uv run genie-ontology serve --host 127.0.0.1 --port 8000",
+    "ecommerce:workspace:databricks-setup": "node scripts/ecommerce-workspace-databricks-setup.mjs",
+    "ecommerce:warehouse:databricks-setup": "node scripts/ecommerce-warehouse-databricks-setup.mjs",
+    "ecommerce:catalog:databricks-setup": "node scripts/ecommerce-catalog-databricks-setup.mjs",
+    "ecommerce:catalog:databricks-truncate": "node scripts/ecommerce-catalog-databricks-truncate.mjs"
+  },
+  "dependencies": {
+    "undici": "^7.16.0"
+  }
+}

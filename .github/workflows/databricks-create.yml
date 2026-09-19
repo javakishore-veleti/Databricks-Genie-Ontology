@@ -1,0 +1,47 @@
+name: Create Databricks stack
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: databricks-create
+  cancel-in-progress: false
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DATABRICKS_ACCOUNT_ID: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
+      DATABRICKS_ACCOUNT_HOST: ${{ secrets.DATABRICKS_ACCOUNT_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_WORKSPACE_NAME: ${{ secrets.DATABRICKS_WORKSPACE_NAME }}
+      DATABRICKS_AWS_REGION: ${{ secrets.DATABRICKS_AWS_REGION }}
+      DATABRICKS_WORKSPACE_ADMIN_EMAILS: ${{ secrets.DATABRICKS_WORKSPACE_ADMIN_EMAILS }}
+      DATABRICKS_WAREHOUSE_NAME: ${{ secrets.DATABRICKS_WAREHOUSE_NAME }}
+      DATABRICKS_CATALOG: ${{ secrets.DATABRICKS_CATALOG }}
+      DATABRICKS_SCHEMA: ${{ secrets.DATABRICKS_SCHEMA }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Databricks env
+        uses: ./.github/actions/setup-databricks
+      - name: Create workspace
+        run: uv run genie-ontology run provision_workspace
+      - name: Create warehouse
+        run: uv run genie-ontology run provision_warehouse
+      - name: Create catalog
+        run: uv run genie-ontology run provision
+      - name: Schedule destroy in 3 hours
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run databricks-schedule-destroy.yml --ref "${GITHUB_REF_NAME}"
+          echo "Queued Destroy Databricks stack in 3 hours. A later Create run cancels the previous timer."

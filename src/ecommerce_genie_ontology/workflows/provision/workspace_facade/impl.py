@@ -45,6 +45,10 @@ class ProvisionWorkspaceFacadeImpl:
         return self._session.agent_title
 
     @property
+    def admin_emails(self) -> tuple[str, ...]:
+        return self._session.context.admin_emails
+
+    @property
     def spark(self) -> Any:
         return self._session.spark
 
@@ -72,6 +76,41 @@ class ProvisionWorkspaceFacadeImpl:
 
     def try_create_page(self, page: dict) -> bool:
         return self._governance.try_create_page(page)
+
+    def share_catalog(self) -> None:
+        from databricks.sdk.service.catalog import IsolationMode, PermissionsChange, Privilege
+
+        name = self.catalog
+        client = self._session.workspace
+        try:
+            client.catalogs.update(name, isolation_mode=IsolationMode.ISOLATION_MODE_OPEN)
+            print(f"OK    catalog {name} isolation OPEN")
+        except Exception as exc:
+            print(f"SKIP  catalog isolation -> {exc}")
+        workspace_id = self._session.context.workspace_id
+        if workspace_id:
+            try:
+                client.workspace_bindings.update(name, assign_workspaces=[int(workspace_id)])
+                print(f"OK    bound catalog {name} to workspace {workspace_id}")
+            except Exception as exc:
+                print(f"SKIP  catalog bind -> {exc}")
+        principals = ["account users", *self.admin_emails]
+        privileges = [
+            Privilege.ALL_PRIVILEGES,
+            Privilege.BROWSE,
+            Privilege.USE_CATALOG,
+            Privilege.USE_SCHEMA,
+            Privilege.SELECT,
+        ]
+        try:
+            client.grants.update(
+                "catalog",
+                name,
+                changes=[PermissionsChange(principal=principal, add=privileges) for principal in principals],
+            )
+            print(f"OK    granted catalog {name} to {len(principals)} principal(s)")
+        except Exception as exc:
+            print(f"SKIP  catalog grant -> {exc}")
 
 
 def _assert_protocol() -> None:
