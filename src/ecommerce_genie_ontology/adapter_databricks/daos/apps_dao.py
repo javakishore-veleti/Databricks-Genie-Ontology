@@ -75,11 +75,23 @@ class AppsDao:
                 "Tools: initiate_fraud_analytics, record_customer_outcome, close_analytics."
             ),
         }
-        created = self._session.workspace.api_client.do("POST", "/api/2.0/apps", body=body)
+        self._session.workspace.api_client.do("POST", "/api/2.0/apps", body=body)
         print(f"OK    created app {MCP_APP_NAME}")
-        payload = created if isinstance(created, dict) else {"name": MCP_APP_NAME}
+        payload = self.get() or {"name": MCP_APP_NAME}
         self._grant_app_principal(payload)
         return payload
+
+    def start(self) -> None:
+        app = self.get() or {}
+        compute = app.get("compute_status")
+        state = str(compute.get("state") if isinstance(compute, dict) else compute or "")
+        app_status = app.get("app_status")
+        app_state = str(app_status.get("state") if isinstance(app_status, dict) else app_status or "")
+        if state.upper() in {"ACTIVE", "RUNNING"} or app_state.upper() in {"RUNNING", "APP_STARTED"}:
+            print(f"OK    app {MCP_APP_NAME} already {state or app_state}")
+            return
+        self._session.workspace.api_client.do("POST", f"/api/2.0/apps/{MCP_APP_NAME}/start")
+        print(f"OK    start {MCP_APP_NAME}")
 
     def deploy(self, source_code_path: str) -> dict:
         body = {"source_code_path": source_code_path}

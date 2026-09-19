@@ -86,6 +86,8 @@ class WorkflowOrchestrator:
         apps = self._factory.adapter_factory().apps_dao()
         source = apps.upload_bundle()
         apps.create_or_get()
+        apps.start()
+        apps.wait_ready("")
         app = apps.deploy(source)
         url = apps.url(app)
         print(f"Custom MCP app {MCP_APP_NAME} ready")

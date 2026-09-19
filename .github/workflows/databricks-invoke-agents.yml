@@ -39,9 +39,5 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Databricks env
         uses: ./.github/actions/setup-databricks
-      - name: Deploy jobs
-        run: uv run genie-ontology deploy
       - name: Ask Genie
-        run: >
-          uv run genie-ontology run invoke_agents --as-job
-          --question "${{ inputs.question }}"
+        run: uv run genie-ontology run invoke_agents --question "${{ inputs.question }}"

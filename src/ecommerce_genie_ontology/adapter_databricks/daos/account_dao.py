@@ -11,7 +11,12 @@ except ImportError:  # Databricks job runtime SDK can be older than uv
     Entitlement = None
     FieldMask = None
     WorkspaceAssignment = None
-from databricks.sdk.service.provisioning import CustomerFacingComputeMode, PricingTier, Workspace
+try:
+    from databricks.sdk.service.provisioning import CustomerFacingComputeMode, PricingTier, Workspace
+except ImportError:  # Databricks job runtime SDK can be older than uv
+    CustomerFacingComputeMode = None
+    PricingTier = None
+    Workspace = None
 
 from ecommerce_genie_ontology.adapter_databricks.account_session import AccountSession
 
