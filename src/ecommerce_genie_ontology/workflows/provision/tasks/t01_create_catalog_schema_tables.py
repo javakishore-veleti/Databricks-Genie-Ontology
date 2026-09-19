@@ -318,7 +318,11 @@ class CreateCatalogSchemaTablesTask:
     def run(self) -> None:
         _create_tables(self._facade)
         _add_constraints(self._facade)
-        _load_frames(self._facade)
+        # Seed rows (including 2024 dates) are not loaded by Create / provision.
+        # Load OLTP with generate_historical, dims/facts with etl_historical,
+        # then realtime CDC with generate_realtime and etl_cdc.
+        # _load_frames(self._facade)
+        print("SKIP  star-schema seed load; use generate_historical / generate_realtime")
 
 
 def _load_frames(facade: ProvisionWorkspaceFacade) -> None:
