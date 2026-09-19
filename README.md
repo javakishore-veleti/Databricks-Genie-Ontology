@@ -29,6 +29,7 @@ and its AI Agents.
 - [Drop the catalog](#drop-the-catalog)
 - [HTTP interface](#http-interface)
 - [How Genie Agent Works](#how-genie-agent-works)
+  - [Genie Agent intro](#genie-agent-intro)
   - [Fraud Geo Agent](#fraud-geo-agent)
   - [This Genie Agent Runtime Behavior](#this-genie-agent-runtime-behavior)
   - [Do Pages come into the picture?](#do-pages-come-into-the-picture)
@@ -510,6 +511,41 @@ Historical generate and ETL should run as Databricks jobs (`as_job: true`, the d
 
 Start with a **Genie Agent** (a Genie space). This is Databricks Genie on
 `/genie`, not App `mcp-ecommerce-oltp`.
+
+### Genie Agent intro
+
+Eleven spaces. Create all of them with GitHub Action
+**01 - Setup - Step 02 - Create all Genie agents** (or **Step 100**, which
+calls Step 02). Recreate one specialist with that row’s
+**02 - Fraud Agent - NN** GitHub Action. Nobody types the right-hand
+**Configure** tabs in the UI.
+
+| Space | Assigned cases | GitHub Action that creates / upserts it |
+|---|---|---|
+| Retail Analytics Genie | merchandising (metric views) | **01 - Setup - Step 02 - Create all Genie agents** |
+| Fraud Velocity Agent | 01, 07 | **01 - Setup - Step 02** or **02 - Fraud Agent - 01 - Fraud Velocity Agent** |
+| Fraud Address Link Agent | 02, 06, 13 | **01 - Setup - Step 02** or **02 - Fraud Agent - 02 - Fraud Address Link Agent** |
+| Fraud Ship-to Bill-to Agent | 03 | **01 - Setup - Step 02** or **02 - Fraud Agent - 03 - Fraud Ship-to Bill-to Agent** |
+| Fraud Returns Agent | 04, 12 | **01 - Setup - Step 02** or **02 - Fraud Agent - 04 - Fraud Returns Agent** |
+| Fraud First-Order Agent | 05 | **01 - Setup - Step 02** or **02 - Fraud Agent - 05 - Fraud First-Order Agent** |
+| Fraud Address Surge Agent | 08, 09 | **01 - Setup - Step 02** or **02 - Fraud Agent - 06 - Fraud Address Surge Agent** |
+| Fraud Promo Agent | 10 | **01 - Setup - Step 02** or **02 - Fraud Agent - 07 - Fraud Promo Agent** |
+| Fraud Inventory Agent | 11 | **01 - Setup - Step 02** or **02 - Fraud Agent - 08 - Fraud Inventory Agent** |
+| Fraud Cancel Agent | 14 | **01 - Setup - Step 02** or **02 - Fraud Agent - 09 - Fraud Cancel Agent** |
+| Fraud Geo Agent | 15 | **01 - Setup - Step 02** or **02 - Fraud Agent - 10 - Fraud Geo Agent** |
+
+Open a space → **Configure**. Same mapping for every fraud specialist
+(Retail is the last column only):
+
+| Configure tab | Who writes it | Which GitHub Action | Code |
+|---|---|---|---|
+| **About** title + description | This repo | **Step 02** or that space’s **02 - Fraud Agent - NN** | `FRAUD_AGENTS` / `AGENT_TITLE` + `AGENT_DESCRIPTION` |
+| **About → Common questions** | This repo | same | Geo: `sample_questions` in `fraud_agents.py`. Others: `Run fraud case {id} {name}`. Retail: `SAMPLE_QUESTIONS` |
+| **About → Warehouse** | This repo | **01 - Setup - Step 01 - Create Databricks stack** (name); Step 02 attaches it | warehouse `ecommerce-genie-ontology` |
+| **About → Agent ID** | Databricks | none (assigned at create) | `_genie_agent_registry.space_id` |
+| **Sources** | This repo | **Step 02** or **02 - Fraud Agent - NN** | Fraud: `SHARED_TABLES` (`retail_oltp` + `retail_star`). Retail: metric views `mv_*` only |
+| **Instructions** | This repo | **Step 02** or **02 - Fraud Agent - NN** (`system_prompt` overrides) | Geo: Case 15 notes. Others: default “investigate only these cases”. Retail: `AGENT_INSTRUCTIONS` |
+| **Examples** (join list) | Databricks, from keys we created | **01 - Setup - Step 01** (`ALTER TABLE … FOREIGN KEY` in `t01`). Retail also gets example SQL from Step 02 | We do **not** send example SQL on fraud spaces |
 
 The prompt used in this workspace for Fraud Geo is:
 
