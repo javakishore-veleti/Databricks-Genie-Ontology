@@ -1,5 +1,5 @@
-name: 01 - Setup - Step 14 - Destroy Databricks stack
-run-name: 01 - Setup - Step 14 - Destroy Databricks stack
+name: 01 - Setup - Step 08 - Destroy Databricks stack
+run-name: 01 - Setup - Step 08 - Destroy Databricks stack
 
 on:
   workflow_dispatch:

@@ -1,43 +1,19 @@
-name: 01 - Setup - Step 13 - Pipeline Realtime Orders and CDC Star Schema
+name: z_retired_ Run ETL Star Schema - CDC Data
 
 on:
   workflow_dispatch:
-    inputs:
-      count:
-        description: New orders to append (100-10000)
-        required: true
-        default: "1000"
-        type: choice
-        options:
-          - "100"
-          - "250"
-          - "500"
-          - "1000"
-          - "2500"
-          - "5000"
-          - "10000"
-      year_window:
-        description: Place new orders in this lookback window
-        required: true
-        default: latest
-        type: choice
-        options:
-          - latest
-          - last_2
-          - last_3
-          - all
 
 permissions:
   contents: read
 
 concurrency:
-  group: databricks-oltp-cdc
+  group: databricks-etl-cdc
   cancel-in-progress: false
 
 jobs:
-  cdc:
+  etl-cdc:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 90
     env:
       DATABRICKS_ACCOUNT_ID: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
       DATABRICKS_ACCOUNT_HOST: ${{ secrets.DATABRICKS_ACCOUNT_HOST }}
@@ -59,10 +35,5 @@ jobs:
         uses: ./.github/actions/setup-databricks
       - name: Deploy Spark jobs
         run: uv run genie-ontology deploy
-      - name: Generate realtime OLTP orders
-        run: >
-          uv run genie-ontology run generate_realtime --as-job
-          --count "${{ inputs.count }}"
-          --year-window "${{ inputs.year_window }}"
       - name: ETL CDC into fact_sales
         run: uv run genie-ontology run etl_cdc --as-job

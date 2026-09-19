@@ -1,4 +1,4 @@
-name: 01 - Setup - Step 08 - Generate Historical Data
+name: z_retired_ Generate Historical Data
 
 on:
   workflow_dispatch:

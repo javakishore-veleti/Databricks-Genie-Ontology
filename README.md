@@ -71,9 +71,9 @@ Template URLs only — replace the `{placeholders}`:
 | 15 | 02 - Fraud Agent - 08 - Fraud Inventory Agent | 3–10 min | Space **Fraud Inventory Agent** | Orders vs stock mismatch. |
 | 16 | 02 - Fraud Agent - 09 - Fraud Cancel Agent | 3–10 min | Space **Fraud Cancel Agent** | Cancel / abort shipment. |
 | 17 | 02 - Fraud Agent - 10 - Fraud Geo Agent | 3–10 min | Space **Fraud Geo Agent** | Default system prompt is the Case 15 notes. **system_prompt** overrides it. Five starter-question checkboxes ask those prompts. **additional_prompt** is comma-separated customer ids. |
-| 18 | 01 - Setup - Step 14 - Destroy Databricks stack | 10–20 min | Workspace gone from account console; cleanup email | Type `DELETE`. Deletes `mcp-ecommerce-oltp`, catalog, warehouse, workspace. Cancels the 3-hour timer. Account list: `https://accounts.cloud.databricks.com/?account_id={ACCOUNT_ID}`. |
+| 18 | 01 - Setup - Step 08 - Destroy Databricks stack | 10–20 min | Workspace gone from account console; cleanup email | Type `DELETE`. Deletes `mcp-ecommerce-oltp`, catalog, warehouse, workspace. Cancels the 3-hour timer. Account list: `https://accounts.cloud.databricks.com/?account_id={ACCOUNT_ID}`. |
 
-Optional lab path (not required for the 100k loop): Step 08 Historical, Step 09 ETL Historical, or Step 12 pipeline; realtime CDC is Step 10 + 11 or Step 13.
+Historical generate / realtime CDC Actions are retired (`z_retired_*`). Use Step 05 + 06 (or 07) for data.
 
 ### Screenshots
 
@@ -352,14 +352,8 @@ Use **Actions → Run workflow**. Create starts a 3-hour timer; a later Create c
 5. **01 - Setup - Step 05 - Populate next 100000 OLTP rows**
 6. **01 - Setup - Step 06 - Populate next N months of dims and facts**
 7. **01 - Setup - Step 07 - Pipeline next 100000 OLTP and next N months star**
-8. **01 - Setup - Step 08 - Generate Historical Data**
-9. **01 - Setup - Step 09 - Run ETL Star Schema - Historical Data**
-10. **01 - Setup - Step 10 - Generate Realtime Orders Data**
-11. **01 - Setup - Step 11 - Run ETL Star Schema - CDC Data**
-12. **01 - Setup - Step 12 - Pipeline Historical OLTP and Star Schema**
-13. **01 - Setup - Step 13 - Pipeline Realtime Orders and CDC Star Schema**
-14. **01 - Setup - Step 14 - Destroy Databricks stack**
-15. **01 - Setup - Step 15 - Destroy Databricks stack in 3 hours**
+8. **01 - Setup - Step 08 - Destroy Databricks stack**
+9. **01 - Setup - Step 09 - Destroy Databricks stack in 3 hours**
 
 **02 - Fraud Agent** (each Action creates that specialist’s Genie space; Databricks hosts Genie MCP at `/api/2.0/mcp/genie/{space_id}`)
 

@@ -1,4 +1,4 @@
-name: 01 - Setup - Step 10 - Generate Realtime Orders Data
+name: z_retired_ Pipeline Realtime Orders and CDC Star Schema
 
 on:
   workflow_dispatch:
@@ -35,9 +35,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  generate-realtime:
+  cdc:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
       DATABRICKS_ACCOUNT_ID: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
       DATABRICKS_ACCOUNT_HOST: ${{ secrets.DATABRICKS_ACCOUNT_HOST }}
@@ -64,3 +64,5 @@ jobs:
           uv run genie-ontology run generate_realtime --as-job
           --count "${{ inputs.count }}"
           --year-window "${{ inputs.year_window }}"
+      - name: ETL CDC into fact_sales
+        run: uv run genie-ontology run etl_cdc --as-job

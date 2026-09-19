@@ -1,19 +1,43 @@
-name: 01 - Setup - Step 09 - Run ETL Star Schema - Historical Data
+name: z_retired_ Generate Realtime Orders Data
 
 on:
   workflow_dispatch:
+    inputs:
+      count:
+        description: New orders to append (100-10000)
+        required: true
+        default: "1000"
+        type: choice
+        options:
+          - "100"
+          - "250"
+          - "500"
+          - "1000"
+          - "2500"
+          - "5000"
+          - "10000"
+      year_window:
+        description: Place new orders in this lookback window
+        required: true
+        default: latest
+        type: choice
+        options:
+          - latest
+          - last_2
+          - last_3
+          - all
 
 permissions:
   contents: read
 
 concurrency:
-  group: databricks-etl-historical
+  group: databricks-oltp-cdc
   cancel-in-progress: false
 
 jobs:
-  etl-historical:
+  generate-realtime:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 90
     env:
       DATABRICKS_ACCOUNT_ID: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
       DATABRICKS_ACCOUNT_HOST: ${{ secrets.DATABRICKS_ACCOUNT_HOST }}
@@ -35,5 +59,8 @@ jobs:
         uses: ./.github/actions/setup-databricks
       - name: Deploy Spark jobs
         run: uv run genie-ontology deploy
-      - name: ETL historical star schema
-        run: uv run genie-ontology run etl_historical --as-job
+      - name: Generate realtime OLTP orders
+        run: >
+          uv run genie-ontology run generate_realtime --as-job
+          --count "${{ inputs.count }}"
+          --year-window "${{ inputs.year_window }}"
