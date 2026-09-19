@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from ecommerce_genie_ontology.adapter_databricks.account_session import AccountSession
-from ecommerce_genie_ontology.adapter_databricks.daos.account_dao import AccountDao
 from ecommerce_genie_ontology.adapter_databricks.daos.genie_dao import GenieDao
 from ecommerce_genie_ontology.adapter_databricks.daos.jobs_dao import JobsDao
 from ecommerce_genie_ontology.adapter_databricks.daos.sql_dao import SqlDao
@@ -95,13 +93,17 @@ class AdapterDatabricksObjectsFactory(ObjectsFactory):
     def account_settings(self) -> AccountSettings:
         return self.singleton("account_settings", AccountSettings.load)
 
-    def account_session(self) -> AccountSession:
+    def account_session(self):
+        from ecommerce_genie_ontology.adapter_databricks.account_session import AccountSession
+
         return self.singleton(
             "account_session",
             lambda: AccountSession.from_settings(self.account_settings()),
         )
 
-    def account_dao(self) -> AccountDao:
+    def account_dao(self):
+        from ecommerce_genie_ontology.adapter_databricks.daos.account_dao import AccountDao
+
         return self.singleton("account_dao", lambda: AccountDao(self.account_session()))
 
     def pw_facade(self) -> PwFacade:

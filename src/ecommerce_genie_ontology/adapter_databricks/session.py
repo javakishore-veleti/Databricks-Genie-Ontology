@@ -113,7 +113,7 @@ class WorkspaceSession:
         return cls(
             context=WorkspaceContext(
                 catalog=widget("catalog_name", "ecommerce_genie_ontology"),
-                schema_name=widget("schema_name", "retail_demo"),
+                schema_name=widget("schema_name", "retail_star"),
                 warehouse_id=warehouse_id,
                 agent_title=widget("agent_title", "Retail Analytics Genie"),
                 parent_path=widget("parent_path"),

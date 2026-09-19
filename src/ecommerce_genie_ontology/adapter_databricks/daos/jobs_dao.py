@@ -107,9 +107,31 @@ class JobsDao:
         if job_id is None:
             raise RuntimeError(f"Job {job_name} not found. Deploy workflows first.")
         print(f"Triggering {job_name} (job_id={job_id})")
-        return self._session.workspace.jobs.run_now_and_wait(
-            job_id=job_id, job_parameters=job_parameters or {}
-        )
+        try:
+            return self._session.workspace.jobs.run_now_and_wait(
+                job_id=job_id, job_parameters=job_parameters or {}
+            )
+        except Exception:
+            self._print_latest_task_errors(job_id)
+            raise
+
+    def _print_latest_task_errors(self, job_id: int) -> None:
+        try:
+            runs = list(self._session.workspace.jobs.list_runs(job_id=job_id, limit=1))
+            if not runs:
+                return
+            full = self._session.workspace.jobs.get_run(runs[0].run_id)
+            for task in full.tasks or []:
+                try:
+                    out = self._session.workspace.jobs.get_run_output(task.run_id)
+                except Exception as exc:
+                    print(f"TASK {task.task_key} output unavailable: {exc}")
+                    continue
+                err = getattr(out, "error", None) or ""
+                if err:
+                    print(f"TASK {task.task_key} error:\n{err}")
+        except Exception as exc:
+            print(f"SKIP  job error detail -> {exc}")
 
     def _mkdir(self, path: str) -> None:
         self._session.workspace.workspace.mkdirs(path)
@@ -164,7 +186,7 @@ class JobsDao:
     def _notebook_source(task_module: str, facade_module: str, facade_class: str) -> str:
         return f"""# Databricks notebook source
 dbutils.widgets.text("catalog_name", "ecommerce_genie_ontology", "Catalog name")
-dbutils.widgets.text("schema_name", "retail_demo", "Schema name")
+dbutils.widgets.text("schema_name", "retail_star", "Schema name")
 dbutils.widgets.text("warehouse_id", "", "SQL warehouse ID")
 dbutils.widgets.text("parent_path", "", "Genie agent parent folder")
 dbutils.widgets.text("agent_title", "Retail Analytics Genie", "Genie agent title")

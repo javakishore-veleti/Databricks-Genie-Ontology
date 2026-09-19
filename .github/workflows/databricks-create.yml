@@ -43,7 +43,7 @@ jobs:
       - name: Deploy Spark jobs
         run: uv run genie-ontology deploy
       - name: Create Genie agents
-        run: uv run genie-ontology run create_agents --as-job
+        run: uv run genie-ontology run create_agents
       - name: Schedule destroy in 3 hours
         env:
           GH_TOKEN: ${{ github.token }}

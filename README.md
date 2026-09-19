@@ -25,7 +25,7 @@ and its AI Agents.
 - [Run locally (uses .env, talks to Databricks APIs)](#run-locally-uses-env-talks-to-databricks-apis)
 - [Create the Databricks workspace](#create-the-databricks-workspace)
 - [Create the SQL warehouse](#create-the-sql-warehouse)
-- [Create the catalog, schema, and demo tables](#create-the-catalog-schema-and-demo-tables)
+- [Create the catalog, schema, and star tables](#create-the-catalog-schema-and-star-tables)
 - [Drop the catalog](#drop-the-catalog)
 - [HTTP interface](#http-interface)
 - [MCP tools](#mcp-tools)
@@ -33,8 +33,8 @@ and its AI Agents.
   - [MCP tools in this codebase](#mcp-tools-in-this-codebase)
 - [Fraud agents (inside `ecommerce_genie_ontology`)](#fraud-agents-inside-ecommerce_genie_ontology)
   - [Context management and graph databases](#context-management-and-graph-databases)
-- [OLTP and CDC locally (uses .env, talks to Databricks Jobs)](#oltp-and-cdc-locally-uses-env-talks-to-databricks-jobs)
-- [Register and run Databricks Jobs](#register-and-run-databricks-jobs)
+- [OLTP and CDC without GitHub Actions](#oltp-and-cdc-without-github-actions)
+- [Register and run Databricks Jobs without GitHub Actions](#register-and-run-databricks-jobs-without-github-actions)
 - [Running Agentic Fraud Analytics - Start To Finish](#running-agentic-fraud-analytics---start-to-finish)
 
 ## Running Agentic Fraud Analytics - Start To Finish
@@ -375,6 +375,8 @@ Optional: `DATABRICKS_ACCOUNT_HOST`, `DATABRICKS_TOKEN`, `DATABRICKS_HOST`, `DAT
 
 ## Run locally (uses .env, talks to Databricks APIs)
 
+Optional if you skip **Actions → Run workflow**. Same Databricks APIs; you run them from a machine with `.env`.
+
 ```bash
 uv run genie-ontology run provision
 uv run genie-ontology run create_agents
@@ -415,9 +417,9 @@ npm run ecommerce:warehouse:databricks-setup
 
 That restarts FastAPI, POSTs `WhReq` to `/api/v1/ontology/provision-warehouse`, then stops the server. The warehouse is found later by name; copying `warehouse_id` into `.env` is optional.
 
-## Create the catalog, schema, and demo tables
+## Create the catalog, schema, and star tables
 
-This is the reference-repo **provision** workflow: `CREATE CATALOG` / `CREATE SCHEMA`, star-schema tables, metric views, tags, and pages. Catalog name defaults to `ecommerce_genie_ontology` (`DATABRICKS_CATALOG` / `DATABRICKS_SCHEMA` in `.env`).
+This is the reference-repo **provision** workflow: `CREATE CATALOG` / `CREATE SCHEMA`, star-schema tables, metric views, tags, and pages. Catalog defaults to `ecommerce_genie_ontology`; schemas default to `retail_oltp` (source) and `retail_star` (dims/facts) (`DATABRICKS_CATALOG` / `DATABRICKS_OLTP_SCHEMA` / `DATABRICKS_SCHEMA` in `.env`).
 
 ```bash
 npm run ecommerce:catalog:databricks-setup
@@ -594,7 +596,9 @@ uv run genie-ontology run fraud --case-id 02
 
 The agent never sees 15 million orders. Spark/SQL stay in Databricks. Each fraud case is a named query plus a small evidence pack. `retail_oltp.entity_link` stores 1–2 hop relationships (`has_address`, `shared_address`) so you do not need Neo4j for these 15 cases. Add a graph store later only if you need unbounded multi-hop traversal or a live investigation UI.
 
-## OLTP and CDC locally (uses .env, talks to Databricks Jobs)
+## OLTP and CDC without GitHub Actions
+
+Same jobs as **01 - Setup** Steps 05–08. Use this only if you are not running those Actions.
 
 ```bash
 uv run genie-ontology deploy
@@ -604,8 +608,9 @@ uv run genie-ontology run generate_realtime --as-job --count 1000 --year-window 
 uv run genie-ontology run etl_cdc --as-job
 ```
 
+## Register and run Databricks Jobs without GitHub Actions
 
-## Register and run Databricks Jobs
+Same as **01 - Setup** Steps 01, 11, and 12. Use this only if you are not running those Actions.
 
 ```bash
 uv run genie-ontology deploy

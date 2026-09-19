@@ -36,4 +36,4 @@ jobs:
       - name: Deploy jobs
         run: uv run genie-ontology deploy
       - name: Create Retail Analytics Genie and 10 fraud specialists
-        run: uv run genie-ontology run create_agents --as-job
+        run: uv run genie-ontology run create_agents

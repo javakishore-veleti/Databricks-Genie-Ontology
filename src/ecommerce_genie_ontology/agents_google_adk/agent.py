@@ -66,7 +66,7 @@ def build_root_agent():
         description="Routes ecommerce fraud questions to 10 specialists on shared dims, facts, and OLTP.",
         instruction=(
             "You coordinate 10 fraud specialists that share ecommerce_genie_ontology.retail_oltp "
-            "and retail_demo dims/facts. Delegate to the matching sub-agent. "
+            "and retail_star dims/facts. Delegate to the matching sub-agent. "
             "Use MCP tools for bounded evidence packs. Do not dump tables."
         ),
         tools=TOOLS,

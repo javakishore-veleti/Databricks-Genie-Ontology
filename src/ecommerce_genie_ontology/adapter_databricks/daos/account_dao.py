@@ -5,17 +5,31 @@ from datetime import timedelta
 
 from databricks.sdk.errors import DatabricksError, NotFound
 from databricks.sdk.service.iam import WorkspacePermission
-from databricks.sdk.service.iamv2 import Entitlement, FieldMask, WorkspaceAssignment
+try:
+    from databricks.sdk.service.iamv2 import Entitlement, FieldMask, WorkspaceAssignment
+except ImportError:  # Databricks job runtime SDK can be older than uv
+    Entitlement = None
+    FieldMask = None
+    WorkspaceAssignment = None
 from databricks.sdk.service.provisioning import CustomerFacingComputeMode, PricingTier, Workspace
 
 from ecommerce_genie_ontology.adapter_databricks.account_session import AccountSession
 
-_ADMIN_ENTITLEMENTS = [
-    Entitlement.WORKSPACE_ACCESS,
-    Entitlement.DATABRICKS_SQL_ACCESS,
-    Entitlement.WORKSPACE_ADMIN,
-    Entitlement.ALLOW_CLUSTER_CREATE,
-]
+_ADMIN_ENTITLEMENTS = (
+    [
+        Entitlement.WORKSPACE_ACCESS,
+        Entitlement.DATABRICKS_SQL_ACCESS,
+        Entitlement.WORKSPACE_ADMIN,
+        Entitlement.ALLOW_CLUSTER_CREATE,
+    ]
+    if Entitlement is not None
+    else [
+        "WORKSPACE_ACCESS",
+        "DATABRICKS_SQL_ACCESS",
+        "WORKSPACE_ADMIN",
+        "ALLOW_CLUSTER_CREATE",
+    ]
+)
 
 
 class AccountDao:
@@ -86,6 +100,9 @@ class AccountDao:
         return legacy_ok or iam_ok
 
     def _assign_iam_v2_entitlements(self, workspace_id: int, principal_id: int) -> bool:
+        if WorkspaceAssignment is None or FieldMask is None:
+            print("SKIP  iam_v2 entitlements (runtime SDK has no Entitlement)")
+            return False
         assignment = WorkspaceAssignment(
             principal_id=principal_id,
             workspace_id=workspace_id,

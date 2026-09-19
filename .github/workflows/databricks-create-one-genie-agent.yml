@@ -40,5 +40,5 @@ jobs:
         run: uv run genie-ontology deploy
       - name: Create ${{ inputs.agent_title }} (Genie MCP)
         run: >
-          uv run genie-ontology run create_agents --as-job
+          uv run genie-ontology run create_agents
           --agent-id "${{ inputs.agent_id }}"
