@@ -1,4 +1,5 @@
 name: Destroy Databricks stack
+run-name: Destroy Databricks stack
 
 on:
   workflow_dispatch:
@@ -73,14 +74,21 @@ jobs:
 
   notify:
     needs: destroy
-    if: |
-      success() &&
-      secrets.SMTP_HOST != '' &&
-      secrets.CLEANUP_NOTIFY_EMAIL != '' &&
-      (secrets.SMTP_FROM != '' || secrets.SMTP_USERNAME != '')
+    if: success()
     runs-on: ubuntu-latest
+    env:
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP_FROM: ${{ secrets.SMTP_FROM }}
+      CLEANUP_NOTIFY_EMAIL: ${{ secrets.CLEANUP_NOTIFY_EMAIL }}
     steps:
+      - name: Skip email when SMTP is not configured
+        if: env.SMTP_HOST == '' || env.CLEANUP_NOTIFY_EMAIL == '' || (env.SMTP_FROM == '' && env.SMTP_USERNAME == '')
+        run: echo "Skipping cleanup email; SMTP secrets are not fully configured."
       - name: Email cleanup confirmation
+        if: env.SMTP_HOST != '' && env.CLEANUP_NOTIFY_EMAIL != '' && (env.SMTP_FROM != '' || env.SMTP_USERNAME != '')
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_HOST }}
