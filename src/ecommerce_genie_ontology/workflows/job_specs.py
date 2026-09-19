@@ -22,7 +22,7 @@ JOB_DESCRIPTIONS = {
     "generate_historical": "Write 3-year OLTP customer/order history with PySpark.",
     "generate_realtime": "Append 100-10000 new OLTP orders for CDC.",
     "etl_historical": "Rebuild star-schema dims/facts from OLTP.",
-    "etl_cdc": "Apply Delta change feed into fact_sales.",
+    "etl_cdc": "Apply Delta change feed into fact_sales and fact_transaction.",
 }
 
 WORKFLOW_ORDER = ("provision", "create_agents", "invoke_agents")

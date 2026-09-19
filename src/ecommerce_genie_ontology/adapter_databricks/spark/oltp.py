@@ -2,6 +2,16 @@ from __future__ import annotations
 
 from datetime import date
 
+from ecommerce_genie_ontology.common.constants.schema_ddl import oltp_statements
+from ecommerce_genie_ontology.common.constants.transaction_types import (
+    ACCOUNT_PRODUCTS,
+    COUNTERPARTY_KINDS,
+    LAB_POSTINGS_PER_YEAR,
+    MAX_GENERATED_ORDERS,
+    MAX_GENERATED_POSTINGS,
+    TRANSACTION_TYPES,
+)
+
 SEGMENTS = ["Consumer", "Small Business", "Enterprise"]
 REGIONS = ["Northeast", "Southeast", "Midwest", "Southwest", "West"]
 ADDRESS_TYPES = ["billing", "shipping", "home"]
@@ -30,88 +40,7 @@ def clamp_cdc_count(count: int) -> int:
 
 def ensure_oltp_schema(spark, catalog: str, oltp_schema: str) -> str:
     fq = f"{catalog}.{oltp_schema}"
-    spark.sql(f"CREATE SCHEMA IF NOT EXISTS {fq}")
-    tables = {
-        "customer": f"""
-CREATE TABLE IF NOT EXISTS {fq}.customer (
-  customer_id STRING NOT NULL,
-  customer_name STRING,
-  segment STRING,
-  region STRING,
-  signup_date DATE,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
-) USING DELTA
-TBLPROPERTIES (delta.enableChangeDataFeed = true)
-""",
-        "customer_address": f"""
-CREATE TABLE IF NOT EXISTS {fq}.customer_address (
-  address_id STRING NOT NULL,
-  customer_id STRING NOT NULL,
-  address_type STRING,
-  line1 STRING,
-  city STRING,
-  region STRING,
-  postal_code STRING,
-  is_primary BOOLEAN
-) USING DELTA
-TBLPROPERTIES (delta.enableChangeDataFeed = true)
-""",
-        "customer_order": f"""
-CREATE TABLE IF NOT EXISTS {fq}.customer_order (
-  order_id STRING NOT NULL,
-  customer_id STRING NOT NULL,
-  order_ts TIMESTAMP,
-  status STRING,
-  store_id INT,
-  billing_address_id STRING,
-  shipping_address_id STRING,
-  order_amount DECIMAL(12,2)
-) USING DELTA
-TBLPROPERTIES (delta.enableChangeDataFeed = true)
-""",
-        "customer_order_line": f"""
-CREATE TABLE IF NOT EXISTS {fq}.customer_order_line (
-  order_line_id STRING NOT NULL,
-  order_id STRING NOT NULL,
-  sku STRING,
-  quantity INT,
-  unit_price DECIMAL(10,2),
-  line_amount DECIMAL(12,2)
-) USING DELTA
-TBLPROPERTIES (delta.enableChangeDataFeed = true)
-""",
-        "customer_order_shipment": f"""
-CREATE TABLE IF NOT EXISTS {fq}.customer_order_shipment (
-  shipment_id STRING NOT NULL,
-  order_id STRING NOT NULL,
-  ship_ts TIMESTAMP,
-  carrier STRING,
-  tracking_number STRING,
-  status STRING,
-  ship_address_id STRING
-) USING DELTA
-TBLPROPERTIES (delta.enableChangeDataFeed = true)
-""",
-        "entity_link": f"""
-CREATE TABLE IF NOT EXISTS {fq}.entity_link (
-  src_type STRING,
-  src_id STRING,
-  rel STRING,
-  dst_type STRING,
-  dst_id STRING,
-  weight DOUBLE
-) USING DELTA
-""",
-        "_cdc_watermark": f"""
-CREATE TABLE IF NOT EXISTS {fq}._cdc_watermark (
-  table_name STRING,
-  version BIGINT,
-  updated_at TIMESTAMP
-) USING DELTA
-""",
-    }
-    for sql in tables.values():
+    for sql in oltp_statements(fq):
         spark.sql(sql)
     return fq
 
@@ -131,7 +60,17 @@ def generate_historical(
     start = history_start(today, year_count)
     days = max((today - start).days, 1)
     n_customers = max(int(customer_count), 1)
-    n_orders = n_customers * max(int(orders_per_year), 1) * max(int(year_count), 1)
+    n_orders = min(
+        n_customers * max(int(orders_per_year), 1) * max(int(year_count), 1),
+        MAX_GENERATED_ORDERS,
+    )
+    n_accounts = n_customers * len(ACCOUNT_PRODUCTS)
+    n_postings = min(n_customers * LAB_POSTINGS_PER_YEAR * max(int(year_count), 1), MAX_GENERATED_POSTINGS)
+    if n_customers * max(int(orders_per_year), 1) * max(int(year_count), 1) > MAX_GENERATED_ORDERS:
+        print(
+            f"CLAMP generate orders to {n_orders:,}. "
+            "30 billion postings is capacity, not a generate run."
+        )
 
     customers = (
         spark.range(n_customers)
@@ -164,6 +103,53 @@ def generate_historical(
         .drop("id", "customer_seq", "addr_n")
     )
     addresses.write.mode("overwrite").saveAsTable(f"{fq}.customer_address")
+
+    accounts = (
+        spark.range(n_accounts)
+        .withColumn("customer_seq", (F.col("id") / len(ACCOUNT_PRODUCTS)).cast("int"))
+        .withColumn("acct_n", (F.col("id") % len(ACCOUNT_PRODUCTS)).cast("int"))
+        .withColumn("customer_id", F.format_string("C%06d", F.col("customer_seq") + 1))
+        .withColumn("account_id", F.concat(F.col("customer_id"), F.lit("-ACCT"), F.col("acct_n")))
+        .withColumn(
+            "product",
+            F.element_at(F.array(*[F.lit(s) for s in ACCOUNT_PRODUCTS]), (F.col("acct_n") + 1).cast("int")),
+        )
+        .withColumn("opened_date", F.date_sub(F.lit(str(start)), (F.col("id") % 200).cast("int")))
+        .withColumn("status", F.lit("open"))
+        .drop("id", "customer_seq", "acct_n")
+    )
+    accounts.write.mode("overwrite").saveAsTable(f"{fq}.customer_account")
+
+    type_codes = [item[0] for item in TRANSACTION_TYPES]
+    counterparties = [item[0] for item in COUNTERPARTY_KINDS]
+    postings = (
+        spark.range(n_postings)
+        .withColumn("customer_seq", (F.col("id") % n_customers).cast("int"))
+        .withColumn("acct_n", (F.col("id") % len(ACCOUNT_PRODUCTS)).cast("int"))
+        .withColumn("customer_id", F.format_string("C%06d", F.col("customer_seq") + 1))
+        .withColumn("account_id", F.concat(F.col("customer_id"), F.lit("-ACCT"), F.col("acct_n")))
+        .withColumn("transaction_id", F.format_string("T%012d", F.col("id") + 1))
+        .withColumn(
+            "type_code",
+            F.element_at(F.array(*[F.lit(s) for s in type_codes]), (F.col("id") % len(type_codes) + 1).cast("int")),
+        )
+        .withColumn(
+            "counterparty_id",
+            F.element_at(
+                F.array(*[F.lit(s) for s in counterparties]),
+                (F.col("id") % len(counterparties) + 1).cast("int"),
+            ),
+        )
+        .withColumn("day_off", (F.col("id") % days).cast("int"))
+        .withColumn("txn_ts", F.to_timestamp(F.date_add(F.lit(str(start)), F.col("day_off"))))
+        .withColumn("txn_date", F.to_date("txn_ts"))
+        .withColumn("amount", ((F.col("id") % 240) * 5 + 25).cast("decimal(12,2)"))
+        .withColumn("balance_before", ((F.col("id") % 4000) * 3 + 200).cast("decimal(14,2)"))
+        .withColumn("balance_after", (F.col("balance_before") + F.col("amount")).cast("decimal(14,2)"))
+        .withColumn("status", F.lit("posted"))
+        .drop("id", "customer_seq", "acct_n", "day_off")
+    )
+    postings.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(f"{fq}.customer_transaction")
 
     orders = (
         spark.range(n_orders)
@@ -219,8 +205,10 @@ def generate_historical(
     return {
         "customers": n_customers,
         "addresses": n_customers * 3,
+        "accounts": n_accounts,
         "orders": n_orders,
         "lines": n_orders * 3,
+        "postings": n_postings,
     }
 
 
@@ -296,7 +284,52 @@ def generate_realtime(
         F.col("shipping_address_id").alias("ship_address_id"),
     )
     shipments.write.mode("append").saveAsTable(f"{fq}.customer_order_shipment")
-    return {"orders": n, "lines": n * 3, "year_window": year_window}
+    max_txn = spark.sql(
+        f"SELECT COALESCE(MAX(CAST(substring(transaction_id, 2) AS BIGINT)), 0) AS m FROM {fq}.customer_transaction"
+    ).collect()[0]["m"]
+    type_codes = [item[0] for item in TRANSACTION_TYPES]
+    counterparties = [item[0] for item in COUNTERPARTY_KINDS]
+    new_postings = (
+        spark.range(n)
+        .withColumn("seq", F.col("id") + int(max_txn) + 1)
+        .withColumn("customer_seq", (F.col("id") % n_customers).cast("int"))
+        .join(customers, "customer_seq", "left")
+        .withColumn("acct_n", (F.col("id") % len(ACCOUNT_PRODUCTS)).cast("int"))
+        .withColumn("account_id", F.concat(F.col("customer_id"), F.lit("-ACCT"), F.col("acct_n")))
+        .withColumn("transaction_id", F.format_string("T%012d", F.col("seq")))
+        .withColumn(
+            "type_code",
+            F.element_at(F.array(*[F.lit(s) for s in type_codes]), (F.col("id") % len(type_codes) + 1).cast("int")),
+        )
+        .withColumn(
+            "counterparty_id",
+            F.element_at(
+                F.array(*[F.lit(s) for s in counterparties]),
+                (F.col("id") % len(counterparties) + 1).cast("int"),
+            ),
+        )
+        .withColumn("txn_ts", F.to_timestamp(F.date_add(F.lit(str(start)), (F.col("id") % days).cast("int"))))
+        .withColumn("txn_date", F.to_date("txn_ts"))
+        .withColumn("amount", ((F.col("id") % 240) * 5 + 25).cast("decimal(12,2)"))
+        .withColumn("balance_before", ((F.col("id") % 4000) * 3 + 200).cast("decimal(14,2)"))
+        .withColumn("balance_after", (F.col("balance_before") + F.col("amount")).cast("decimal(14,2)"))
+        .withColumn("status", F.lit("posted"))
+        .select(
+            "transaction_id",
+            "customer_id",
+            "account_id",
+            "counterparty_id",
+            "type_code",
+            "txn_ts",
+            "txn_date",
+            "amount",
+            "balance_before",
+            "balance_after",
+            "status",
+        )
+    )
+    new_postings.write.mode("append").saveAsTable(f"{fq}.customer_transaction")
+    return {"orders": n, "lines": n * 3, "postings": n, "year_window": year_window}
 
 
 def _write_entity_links(spark, fq: str) -> None:

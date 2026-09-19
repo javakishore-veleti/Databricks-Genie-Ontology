@@ -43,13 +43,21 @@ hydrate one customer at a time.
 | Transactions per customer per year | 30,000 | Sales lines and funds-movement postings in that year |
 | Years of history | 10 | End date 18 September 2026; start 18 September 2016 |
 | Transactions per customer | 300,000 | 30,000 × 10 years |
-| Postings in the warehouse | about 30 billion | 100,000 × 300,000 |
+| Postings in the warehouse | about 30 billion | 100,000 × 300,000 — design ceiling, not a generate job |
+
+Create / Generate Historical never writes 30 billion rows. That load would run
+for days on a large warehouse and blow the 3-hour stack window. Default
+generate is **200 customers**, **3 years**, **500 postings per customer per
+year** (about 300,000 postings) plus sales orders. Orders are also capped at
+20 million rows per run.
 
 ### OLTP and Star Schema Models
 
 Sales and funds movement live in OLTP (`customer`, `customer_address`,
-`customer_order`, `customer_order_line`, `customer_order_shipment`) plus
-conformed dimensions and facts. Design volume is the capacity above.
+`customer_account`, `customer_order`, `customer_order_line`,
+`customer_order_shipment`, `customer_transaction`) plus conformed dimensions
+and facts (`dim_account`, `dim_transaction_type`, `dim_counterparty`,
+`fact_transaction` with the sales stars). Design volume is the capacity above.
 Agents are **customer-scoped**: MCP
 returns only `customer_id` values for a date range, then each agent loops
 (parallel or sequential) and hydrates **one customer** from star schema and/or
@@ -198,7 +206,7 @@ src/ecommerce_genie_ontology/
 | **etl_historical** | `ecommerce-genie-ontology-etl-historical` | Overwrite star-schema dims/facts from OLTP |
 | **etl_cdc** | `ecommerce-genie-ontology-etl-cdc` | Apply Delta change feed into `fact_sales` |
 
-Default volume is **200 customers**, **3 addresses each**, **25,000 orders per customer per year**, **3 years** ending this month (about 15 million orders). That is per year, not per day. Dims/facts are rebuilt from those OLTP tables so they match.
+Default generate is **200 customers**, **3 addresses**, **4 accounts**, **25,000 orders per customer per year**, **500 postings per customer per year**, **3 years** ending this month (about 15 million orders and 300,000 postings). That is per year, not per day. Dims/facts are rebuilt from those OLTP tables so they match. Do not set Generate to 100,000 × 30,000 × 10 — that is the design ceiling, not a GitHub Action.
 
 ## Prerequisites
 

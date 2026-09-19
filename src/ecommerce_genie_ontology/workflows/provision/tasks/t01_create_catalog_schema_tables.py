@@ -5,6 +5,12 @@ from datetime import date, timedelta
 import numpy as np
 import pandas as pd
 
+from ecommerce_genie_ontology.common.constants.schema_ddl import (
+    dim_counterparty_seed,
+    dim_transaction_type_seed,
+    funds_star_statements,
+    oltp_statements,
+)
 from ecommerce_genie_ontology.common.interfaces.provision import ProvisionWorkspaceFacade
 
 
@@ -32,9 +38,15 @@ COMMENT 'Genie One + Genie Ontology demo catalog (Northwind Retail sales analyti
     facade.sql(
         f"""
 CREATE SCHEMA IF NOT EXISTS {fq}
-COMMENT 'Star schema: sales, returns and inventory facts with conformed date/product/customer/store dimensions'
+COMMENT 'Star schema: sales, returns, inventory, and funds-movement facts with conformed dimensions'
 """
     )
+    for statement in oltp_statements(facade.fq_oltp):
+        facade.sql(statement)
+    for statement in funds_star_statements(fq):
+        facade.sql(statement)
+    facade.sql(dim_transaction_type_seed(fq))
+    facade.sql(dim_counterparty_seed(fq))
     facade.sql(f"USE CATALOG {facade.catalog}")
     facade.sql(f"USE SCHEMA {facade.schema_name}")
 
@@ -147,6 +159,10 @@ def _add_constraints(facade: ProvisionWorkspaceFacade) -> None:
             f"ALTER TABLE {fq}.fact_inventory ADD CONSTRAINT pk_fact_inventory "
             "PRIMARY KEY (snapshot_date_key, product_key, store_key)"
         ),
+        f"ALTER TABLE {fq}.dim_transaction_type ADD CONSTRAINT pk_dim_transaction_type PRIMARY KEY (type_key)",
+        f"ALTER TABLE {fq}.dim_account ADD CONSTRAINT pk_dim_account PRIMARY KEY (account_key)",
+        f"ALTER TABLE {fq}.dim_counterparty ADD CONSTRAINT pk_dim_counterparty PRIMARY KEY (counterparty_key)",
+        f"ALTER TABLE {fq}.fact_transaction ADD CONSTRAINT pk_fact_transaction PRIMARY KEY (transaction_id)",
     ]
     fk_statements = [
         f"ALTER TABLE {fq}.fact_sales ADD CONSTRAINT fk_sales_date FOREIGN KEY (date_key) REFERENCES {fq}.dim_date (date_key)",
@@ -160,6 +176,11 @@ def _add_constraints(facade: ProvisionWorkspaceFacade) -> None:
         f"ALTER TABLE {fq}.fact_inventory ADD CONSTRAINT fk_inventory_date FOREIGN KEY (snapshot_date_key) REFERENCES {fq}.dim_date (date_key)",
         f"ALTER TABLE {fq}.fact_inventory ADD CONSTRAINT fk_inventory_product FOREIGN KEY (product_key) REFERENCES {fq}.dim_product (product_key)",
         f"ALTER TABLE {fq}.fact_inventory ADD CONSTRAINT fk_inventory_store FOREIGN KEY (store_key) REFERENCES {fq}.dim_store (store_key)",
+        f"ALTER TABLE {fq}.fact_transaction ADD CONSTRAINT fk_txn_date FOREIGN KEY (date_key) REFERENCES {fq}.dim_date (date_key)",
+        f"ALTER TABLE {fq}.fact_transaction ADD CONSTRAINT fk_txn_customer FOREIGN KEY (customer_key) REFERENCES {fq}.dim_customer (customer_key)",
+        f"ALTER TABLE {fq}.fact_transaction ADD CONSTRAINT fk_txn_account FOREIGN KEY (account_key) REFERENCES {fq}.dim_account (account_key)",
+        f"ALTER TABLE {fq}.fact_transaction ADD CONSTRAINT fk_txn_type FOREIGN KEY (type_key) REFERENCES {fq}.dim_transaction_type (type_key)",
+        f"ALTER TABLE {fq}.fact_transaction ADD CONSTRAINT fk_txn_cp FOREIGN KEY (counterparty_key) REFERENCES {fq}.dim_counterparty (counterparty_key)",
     ]
     for stmt in pk_statements + fk_statements:
         facade.sql_ok(stmt)

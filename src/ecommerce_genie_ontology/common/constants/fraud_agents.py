@@ -7,15 +7,21 @@ from ecommerce_genie_ontology.common.constants.fraud_cases import FRAUD_CASES
 SHARED_TABLES = (
     ("customer", "oltp", "Retail customers"),
     ("customer_address", "oltp", "Billing, shipping, and home addresses (3 per customer)"),
+    ("customer_account", "oltp", "Four accounts per customer: checking, CD, credit card, brokerage"),
     ("customer_order", "oltp", "Orders with status, amount, bill-to and ship-to"),
     ("customer_order_line", "oltp", "Order lines with sku, quantity, unit price"),
     ("customer_order_shipment", "oltp", "Shipments and carriers"),
+    ("customer_transaction", "oltp", "Funds-movement postings with type, amount, and balances"),
     ("entity_link", "oltp", "1-2 hop entity relationships for shared address"),
     ("dim_customer", "star", "Customer dimension"),
     ("dim_product", "star", "Product dimension"),
+    ("dim_account", "star", "Customer accounts"),
+    ("dim_transaction_type", "star", "Funds-movement type codes"),
+    ("dim_counterparty", "star", "Bank, brokerage, or card issuer on a posting"),
     ("fact_sales", "star", "Sales facts aligned to OLTP lines"),
     ("fact_returns", "star", "Returns derived from cancelled orders"),
     ("fact_inventory", "star", "Inventory snapshots by product"),
+    ("fact_transaction", "star", "One row per posting"),
 )
 
 FRAUD_AGENTS: tuple[dict[str, object], ...] = (

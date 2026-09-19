@@ -56,6 +56,10 @@ class ProvisionWorkspaceFacadeImpl:
     def fq_schema(self) -> str:
         return self._session.fq_schema
 
+    @property
+    def fq_oltp(self) -> str:
+        return self._session.context.fq_oltp
+
     def sql(self, statement: str) -> Any:
         return self._sql.execute(statement)
 

@@ -28,6 +28,7 @@ jobs:
       DATABRICKS_WAREHOUSE_NAME: ${{ secrets.DATABRICKS_WAREHOUSE_NAME }}
       DATABRICKS_CATALOG: ${{ secrets.DATABRICKS_CATALOG }}
       DATABRICKS_SCHEMA: ${{ secrets.DATABRICKS_SCHEMA }}
+      DATABRICKS_OLTP_SCHEMA: ${{ secrets.DATABRICKS_OLTP_SCHEMA }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -4,17 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       customers:
-        description: Number of customers
+        description: Number of customers (lab default 200; do not use 100000)
         required: true
         default: "200"
         type: string
       orders_per_year:
-        description: Orders per customer per year
+        description: Orders per customer per year (capped; 30 billion postings is not a generate job)
         required: true
         default: "25000"
         type: string
       years:
-        description: Years of history ending this month (1-3)
+        description: Years of history ending this month (1-3; design capacity is 10)
         required: true
         default: "3"
         type: choice
