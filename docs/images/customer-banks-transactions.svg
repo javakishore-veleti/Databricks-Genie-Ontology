@@ -1,122 +1,80 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 820" role="img" aria-labelledby="title desc">
-  <title id="title">Customer, transaction types, and banks</title>
-  <desc id="desc">A customer on the left connects through funds-movement types in the center to banks and institutions on the right.</desc>
-  <defs>
-    <linearGradient id="page" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#f7fafc"/>
-      <stop offset="100%" stop-color="#eef4fb"/>
-    </linearGradient>
-    <linearGradient id="cust" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0f766e"/>
-      <stop offset="100%" stop-color="#0d9488"/>
-    </linearGradient>
-    <linearGradient id="bank" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1d4ed8"/>
-      <stop offset="100%" stop-color="#2563eb"/>
-    </linearGradient>
-    <filter id="soft" x="-8%" y="-8%" width="116%" height="116%">
-      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#1e3a5f" flood-opacity="0.10"/>
-    </filter>
-    <marker id="arrowTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 10 5 L 0 8.5 Z" fill="#0f766e"/>
-    </marker>
-    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 1.5 L 10 5 L 0 8.5 Z" fill="#2563eb"/>
-    </marker>
-  </defs>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="820" viewBox="0 0 1440 820">
+  <rect width="1440" height="820" fill="#f7fafc"/>
+  <text x="48" y="52" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="#1e3a5f">How money moves</text>
+  <text x="48" y="82" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#5b6b80">Customer on the left. Transaction types in the center. Banks on the right.</text>
 
-  <rect width="1440" height="820" fill="url(#page)"/>
-  <text x="48" y="52" font-family="Georgia, 'Times New Roman', serif" font-size="28" fill="#1e3a5f">How money moves</text>
-  <text x="48" y="82" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#5b6b80">Customer accounts on the left. Transaction types in the center. Banks and institutions on the right.</text>
+  <rect x="48" y="120" width="320" height="640" rx="24" fill="#ffffff" stroke="#99f6e4" stroke-width="2"/>
+  <rect x="48" y="120" width="320" height="88" rx="24" fill="#0d9488"/>
+  <rect x="48" y="184" width="320" height="24" fill="#0d9488"/>
+  <text x="208" y="174" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#ffffff">Customer</text>
+  <circle cx="208" cy="280" r="42" fill="#ccfbf1"/>
+  <circle cx="208" cy="264" r="14" fill="#0f766e"/>
+  <ellipse cx="208" cy="318" rx="28" ry="16" fill="#0f766e"/>
+  <text x="208" y="380" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#0f766e">One person, many accounts</text>
+  <rect x="80" y="412" width="256" height="52" rx="12" fill="#f0fdfa" stroke="#5eead4"/>
+  <text x="208" y="444" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#115e59">Checking</text>
+  <rect x="80" y="476" width="256" height="52" rx="12" fill="#f0fdfa" stroke="#5eead4"/>
+  <text x="208" y="508" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#115e59">Certificate of deposit</text>
+  <rect x="80" y="540" width="256" height="52" rx="12" fill="#f0fdfa" stroke="#5eead4"/>
+  <text x="208" y="572" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#115e59">Credit card</text>
+  <rect x="80" y="604" width="256" height="52" rx="12" fill="#f0fdfa" stroke="#5eead4"/>
+  <text x="208" y="636" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#115e59">Brokerage</text>
+  <text x="208" y="720" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#5b6b80">balance before and after</text>
 
-  <!-- Customer -->
-  <g filter="url(#soft)">
-    <rect x="48" y="120" width="320" height="640" rx="24" fill="#ffffff" stroke="#99f6e4" stroke-width="1.5"/>
-    <rect x="48" y="120" width="320" height="88" rx="24" fill="url(#cust)"/>
-    <rect x="48" y="184" width="320" height="24" fill="url(#cust)"/>
-    <text x="208" y="174" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Customer</text>
-    <circle cx="208" cy="280" r="42" fill="#ccfbf1"/>
-    <circle cx="208" cy="264" r="14" fill="#0f766e"/>
-    <path d="M180 318 Q208 292 236 318 L236 332 Q208 322 180 332 Z" fill="#0f766e"/>
-    <text x="208" y="380" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#0f766e">One person  ·  many accounts</text>
-    <rect x="80" y="412" width="256" height="52" rx="12" fill="#f0fdfa" stroke="#5eead4"/>
-    <text x="208" y="444" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#115e59">Checking</text>
-    <rect x="80" y="476" width="256" height="52" rx="12" fill="#f0fdfa" stroke="#5eead4"/>
-    <text x="208" y="508" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#115e59">Certificate of deposit</text>
-    <rect x="80" y="540" width="256" height="52" rx="12" fill="#f0fdfa" stroke="#5eead4"/>
-    <text x="208" y="572" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#115e59">Credit card</text>
-    <rect x="80" y="604" width="256" height="52" rx="12" fill="#f0fdfa" stroke="#5eead4"/>
-    <text x="208" y="636" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#115e59">Brokerage</text>
-    <text x="208" y="720" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#5b6b80">balance before  ·  balance after</text>
-  </g>
+  <rect x="432" y="120" width="576" height="640" rx="24" fill="#ffffff" stroke="#bfdbfe" stroke-width="2"/>
+  <rect x="432" y="120" width="576" height="88" rx="24" fill="#2563eb"/>
+  <rect x="432" y="184" width="576" height="24" fill="#2563eb"/>
+  <text x="720" y="174" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#ffffff">Transaction types</text>
 
-  <!-- Center types -->
-  <g filter="url(#soft)">
-    <rect x="432" y="120" width="576" height="640" rx="24" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.5"/>
-    <rect x="432" y="120" width="576" height="88" rx="24" fill="#2563eb"/>
-    <rect x="432" y="184" width="576" height="24" fill="#2563eb"/>
-    <text x="720" y="174" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Transaction types</text>
-  </g>
+  <rect x="468" y="236" width="248" height="48" rx="12" fill="#e0f2fe" stroke="#7dd3fc"/>
+  <text x="592" y="266" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">Wire transfer</text>
+  <rect x="724" y="236" width="248" height="48" rx="12" fill="#e0f2fe" stroke="#7dd3fc"/>
+  <text x="848" y="266" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">Cash deposit</text>
+  <rect x="468" y="300" width="248" height="48" rx="12" fill="#ede9fe" stroke="#c4b5fd"/>
+  <text x="592" y="330" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">Cash withdrawal</text>
+  <rect x="724" y="300" width="248" height="48" rx="12" fill="#ede9fe" stroke="#c4b5fd"/>
+  <text x="848" y="330" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">Bank to bank, other account</text>
+  <rect x="468" y="364" width="248" height="48" rx="12" fill="#fef3c7" stroke="#fcd34d"/>
+  <text x="592" y="394" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">Bank to bank, same account</text>
+  <rect x="724" y="364" width="248" height="48" rx="12" fill="#fef3c7" stroke="#fcd34d"/>
+  <text x="848" y="394" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">Same bank, same accounts</text>
+  <rect x="468" y="428" width="248" height="48" rx="12" fill="#d1fae5" stroke="#6ee7b7"/>
+  <text x="592" y="458" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">Withdraw to CD</text>
+  <rect x="724" y="428" width="248" height="48" rx="12" fill="#d1fae5" stroke="#6ee7b7"/>
+  <text x="848" y="458" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">Deposit into CD</text>
+  <rect x="468" y="492" width="248" height="48" rx="12" fill="#ffe4e6" stroke="#fda4af"/>
+  <text x="592" y="522" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">From security brokerage</text>
+  <rect x="724" y="492" width="248" height="48" rx="12" fill="#ffe4e6" stroke="#fda4af"/>
+  <text x="848" y="522" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">To security brokerage</text>
+  <rect x="468" y="556" width="248" height="48" rx="12" fill="#e0e7ff" stroke="#a5b4fc"/>
+  <text x="592" y="586" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">Demand draft requested</text>
+  <rect x="724" y="556" width="248" height="48" rx="12" fill="#e0e7ff" stroke="#a5b4fc"/>
+  <text x="848" y="586" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">Demand draft issued</text>
+  <rect x="468" y="620" width="248" height="48" rx="12" fill="#cffafe" stroke="#67e8f9"/>
+  <text x="592" y="650" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">Credit card transaction</text>
+  <rect x="724" y="620" width="248" height="48" rx="12" fill="#cffafe" stroke="#67e8f9"/>
+  <text x="848" y="650" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">Card payment and dues</text>
+  <text x="720" y="710" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#5b6b80">class, direction, same_bank, same_account</text>
 
-  <g font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#1e3a5f">
-    <rect x="468" y="236" width="248" height="48" rx="12" fill="#e0f2fe" stroke="#7dd3fc"/>
-    <text x="592" y="266" text-anchor="middle">Wire transfer</text>
-    <rect x="724" y="236" width="248" height="48" rx="12" fill="#e0f2fe" stroke="#7dd3fc"/>
-    <text x="848" y="266" text-anchor="middle">Cash deposit</text>
+  <rect x="1072" y="120" width="320" height="640" rx="24" fill="#ffffff" stroke="#bfdbfe" stroke-width="2"/>
+  <rect x="1072" y="120" width="320" height="88" rx="24" fill="#2563eb"/>
+  <rect x="1072" y="184" width="320" height="24" fill="#2563eb"/>
+  <text x="1232" y="174" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#ffffff">Banks</text>
+  <rect x="1104" y="236" width="256" height="88" rx="14" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="1232" y="276" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#1e3a8a">Same bank</text>
+  <text x="1232" y="300" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#64748b">own accounts, book entry</text>
+  <rect x="1104" y="340" width="256" height="88" rx="14" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="1232" y="380" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#1e3a8a">Other bank</text>
+  <text x="1232" y="404" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#64748b">wire, bank-to-bank</text>
+  <rect x="1104" y="444" width="256" height="88" rx="14" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="1232" y="484" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#1e3a8a">Brokerage</text>
+  <text x="1232" y="508" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#64748b">securities in and out</text>
+  <rect x="1104" y="548" width="256" height="88" rx="14" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="1232" y="588" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#1e3a8a">Card issuer</text>
+  <text x="1232" y="612" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#64748b">purchase, payment, dues</text>
+  <text x="1232" y="700" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#5b6b80">counterparty on the posting</text>
 
-    <rect x="468" y="300" width="248" height="48" rx="12" fill="#ede9fe" stroke="#c4b5fd"/>
-    <text x="592" y="330" text-anchor="middle">Cash withdrawal</text>
-    <rect x="724" y="300" width="248" height="48" rx="12" fill="#ede9fe" stroke="#c4b5fd"/>
-    <text x="848" y="330" text-anchor="middle">Bank to bank · other account</text>
-
-    <rect x="468" y="364" width="248" height="48" rx="12" fill="#fef3c7" stroke="#fcd34d"/>
-    <text x="592" y="394" text-anchor="middle">Bank to bank · same account</text>
-    <rect x="724" y="364" width="248" height="48" rx="12" fill="#fef3c7" stroke="#fcd34d"/>
-    <text x="848" y="394" text-anchor="middle">Same bank · same accounts</text>
-
-    <rect x="468" y="428" width="248" height="48" rx="12" fill="#d1fae5" stroke="#6ee7b7"/>
-    <text x="592" y="458" text-anchor="middle">Withdraw to CD</text>
-    <rect x="724" y="428" width="248" height="48" rx="12" fill="#d1fae5" stroke="#6ee7b7"/>
-    <text x="848" y="458" text-anchor="middle">Deposit into CD</text>
-
-    <rect x="468" y="492" width="248" height="48" rx="12" fill="#ffe4e6" stroke="#fda4af"/>
-    <text x="592" y="522" text-anchor="middle">From security brokerage</text>
-    <rect x="724" y="492" width="248" height="48" rx="12" fill="#ffe4e6" stroke="#fda4af"/>
-    <text x="848" y="522" text-anchor="middle">To security brokerage</text>
-
-    <rect x="468" y="556" width="248" height="48" rx="12" fill="#e0e7ff" stroke="#a5b4fc"/>
-    <text x="592" y="586" text-anchor="middle">Demand draft requested</text>
-    <rect x="724" y="556" width="248" height="48" rx="12" fill="#e0e7ff" stroke="#a5b4fc"/>
-    <text x="848" y="586" text-anchor="middle">Demand draft issued</text>
-
-    <rect x="468" y="620" width="248" height="48" rx="12" fill="#cffafe" stroke="#67e8f9"/>
-    <text x="592" y="650" text-anchor="middle">Credit card transaction</text>
-    <rect x="724" y="620" width="248" height="48" rx="12" fill="#cffafe" stroke="#67e8f9"/>
-    <text x="848" y="650" text-anchor="middle">Card payment · card dues</text>
-  </g>
-  <text x="720" y="710" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#5b6b80">class  ·  direction  ·  same_bank  ·  same_account</text>
-
-  <!-- Banks -->
-  <g filter="url(#soft)">
-    <rect x="1072" y="120" width="320" height="640" rx="24" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.5"/>
-    <rect x="1072" y="120" width="320" height="88" rx="24" fill="url(#bank)"/>
-    <rect x="1072" y="184" width="320" height="24" fill="url(#bank)"/>
-    <text x="1232" y="174" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Banks</text>
-    <rect x="1104" y="236" width="256" height="88" rx="14" fill="#eff6ff" stroke="#93c5fd"/>
-    <text x="1232" y="276" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#1e3a8a">Same bank</text>
-    <text x="1232" y="300" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#64748b">own accounts  ·  book entry</text>
-    <rect x="1104" y="340" width="256" height="88" rx="14" fill="#eff6ff" stroke="#93c5fd"/>
-    <text x="1232" y="380" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#1e3a8a">Other bank</text>
-    <text x="1232" y="404" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#64748b">wire  ·  bank-to-bank</text>
-    <rect x="1104" y="444" width="256" height="88" rx="14" fill="#eff6ff" stroke="#93c5fd"/>
-    <text x="1232" y="484" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#1e3a8a">Brokerage</text>
-    <text x="1232" y="508" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#64748b">securities in and out</text>
-    <rect x="1104" y="548" width="256" height="88" rx="14" fill="#eff6ff" stroke="#93c5fd"/>
-    <text x="1232" y="588" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#1e3a8a">Card issuer</text>
-    <text x="1232" y="612" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#64748b">purchase  ·  payment  ·  dues</text>
-    <text x="1232" y="700" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#5b6b80">counterparty on the posting</text>
-  </g>
-
-  <path d="M368 440 C400 440, 412 440, 432 440" fill="none" stroke="#0f766e" stroke-width="2.5" marker-end="url(#arrowTeal)"/>
-  <path d="M1008 440 C1028 440, 1044 440, 1072 440" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+  <polygon points="368,430 424,440 368,450" fill="#0d9488"/>
+  <polygon points="1008,430 1064,440 1008,450" fill="#2563eb"/>
 </svg>

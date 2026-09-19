@@ -49,10 +49,11 @@ tools stay honest.
 ### DataWarehouse
 
 A data warehouse turns ten years of customer activity into a place agents and
-people can ask the same question and get the same answer. Facts hold measures
-at a stated grain. Dimensions hold the who, when, what, and where. That is
-what makes amount, velocity, segment, and type comparable across 100,000
-customers without each team rewriting joins on raw OLTP.
+people can ask the same question and get the same answer. Facts hold the
+numbers. Each fact row is one event (one sale line, one return, one money
+movement). Dimensions hold the who, when, what, and where. That is what makes
+amount, velocity, segment, and type comparable across 100,000 customers
+without each team rewriting joins on raw OLTP.
 
 ### The Architecture behind MCP
 
@@ -67,28 +68,29 @@ same customer and date.
 
 Sales fraud and funds-movement fraud share `dim_customer` and `dim_date` only.
 Do not hang wire transfers or card dues off `customer_order` / `fact_sales`.
-Add a second grain: **posting** (`customer_transaction` / `fact_transaction`)
-with account, type, counterparty, amount, and balance before/after.
+Add a second fact table: one row per **posting** (`customer_transaction` /
+`fact_transaction`) with account, type, counterparty, amount, and balance
+before/after.
 
-![Customer, transaction types, and banks](docs/images/customer-banks-transactions.svg)
+![Customer, transaction types, and banks](docs/images/customer-banks-transactions.png)
 
-![Business data architecture](docs/images/business-data-architecture.svg)
+![Business data architecture](docs/images/business-data-architecture.png)
 
-**Sales star** — grain is one sales line.
+**Sales star** — each row is one sales line (one product on one order).
 
-![Sales star schema](docs/images/star-schema-sales.svg)
+![Sales star schema](docs/images/star-schema-sales.png)
 
-**Returns star** — grain is one return, conformed to the same customer, date, and product.
+**Returns star** — each row is one return, tied to the same customer, date, and product as sales.
 
-![Returns star schema](docs/images/star-schema-returns.svg)
+![Returns star schema](docs/images/star-schema-returns.png)
 
-**Inventory star** — grain is product and store on a snapshot date (order vs stock).
+**Inventory star** — each row is how many units of one product a store had on one day (so you can compare sales to stock).
 
-![Inventory star schema](docs/images/star-schema-inventory.svg)
+![Inventory star schema](docs/images/star-schema-inventory.png)
 
-**Funds-movement star** — grain is one posting. Customer and date are shared; account, type, and counterparty are new.
+**Funds-movement star** — each row is one money movement. Customer and date match sales; account, type, and counterparty are new.
 
-![Funds-movement star schema](docs/images/star-schema-transactions.svg)
+![Funds-movement star schema](docs/images/star-schema-transactions.png)
 
 **MCP contract (customer first)**
 
@@ -319,21 +321,54 @@ npm run ecommerce:api:run
 
 Historical generate and ETL should run as Databricks jobs (`as_job: true`, the default) because 15 million orders need Spark. The local process only triggers the job.
 
-## MCP: Genie vs this repo
+## MCP tools
 
-Databricks already hosts MCP for analytics. Point an agent at the workspace Genie space for NL questions over certified dims, facts, and metric views:
+There are two MCP surfaces. Databricks Genie is the managed analytics path
+inside the workspace. This repo also runs its own MCP server for load,
+ETL, and fraud evidence. Do not put generate or CDC tools on Genie.
 
-- `{DATABRICKS_HOST}/api/2.0/mcp/genie/{GENIE_SPACE_ID}`
-- `{DATABRICKS_HOST}/api/2.0/mcp/sql`
+### MCP tools in Databricks Genie
 
-Do **not** put generate/CDC tools inside Genie. This repo’s operational MCP is separate: it triggers OLTP generation, CDC ETL, and 15 fraud **evidence packs** (at most 50 SQL rows). It never loads fact tables into the model.
+Databricks hosts these servers. `create_agents` publishes one Retail Analytics
+Genie space plus ten fraud specialist spaces on the same OLTP and star tables.
+An MCP client authenticates to the workspace and calls Genie; Genie writes the
+SQL.
+
+| Server | URL | When to use |
+|---|---|---|
+| Genie One | `{DATABRICKS_HOST}/api/2.0/mcp/genie` | Natural-language questions across the workspace |
+| Genie Agent | `{DATABRICKS_HOST}/api/2.0/mcp/genie/{GENIE_SPACE_ID}` | Questions scoped to one Genie space (retail analytics or one fraud specialist) |
+| Databricks SQL | `{DATABRICKS_HOST}/api/2.0/mcp/sql` | A query you already wrote (not fraud generate / CDC) |
+
+Genie One / Genie Agent tools (the client calls `genie_ask`; the rest are for
+the in-flight turn):
+
+| Tool | What it does |
+|---|---|
+| `genie_ask` | Ask a natural-language data question. Returns `conversation_id`, `response_id`, and `status`. Pass `conversation_id` to continue. |
+| `genie_poll_response` | Read progress, the final answer, and links back to Databricks sources. |
+| `genie_get_query_result` | Fetch the SQL result Genie ran (schema and rows). |
+| `genie_cancel_response` | Cancel an in-flight Genie turn. |
+| `view_ask` | Same ask, opens the interactive View (MCP Apps clients). |
+
+Genie spaces created here: **Retail Analytics Genie** (certified metric views)
+and the ten fraud specialists (`velocity`, `address_link`, `ship_bill`,
+`returns`, `first_order`, `address_surge`, `promo`, `inventory`, `cancel`,
+`geo`). Those specialists answer questions; they do not run Spark jobs.
+
+### MCP tools in this codebase
+
+The non-Databricks MCP is `ecommerce-oltp-mcp` in
+`src/ecommerce_genie_ontology/mcp/`. LangGraph, Google ADK, Cursor, and Claude
+Desktop call it over stdio. Portal chat reaches the same functions through
+FastAPI facades. Every evidence tool returns at most 50 rows.
 
 ```bash
 uv sync --extra mcp
 uv run --extra mcp genie-ontology mcp
 ```
 
-Cursor / Claude Desktop stdio config:
+Cursor / Claude Desktop:
 
 ```json
 {
@@ -347,7 +382,28 @@ Cursor / Claude Desktop stdio config:
 }
 ```
 
-Tools: `list_fraud_cases`, `list_fraud_agents`, `run_fraud_case`, `run_fraud_agent_cases`, `generate_historical_oltp`, `generate_realtime_orders`, `etl_star_historical`, `etl_star_cdc`, `query_dataset`.
+**Evidence and specialists**
+
+| Tool | What it does |
+|---|---|
+| `list_fraud_cases` | The 15 named fraud cases (evidence packs, not full tables). |
+| `list_fraud_agents` | The 10 specialists and which cases each owns. |
+| `run_fraud_case` | Run one case (`01`–`15`). At most 50 evidence rows. |
+| `run_fraud_agent_cases` | Run every pack owned by one specialist. |
+| `query_dataset` | One `SELECT` or `WITH` against OLTP or star. Forced `LIMIT 50`. |
+
+**Load and ETL (operators; not on Genie)**
+
+| Tool | What it does |
+|---|---|
+| `generate_historical_oltp` | Write customer, address, order, line, shipment, and `entity_link`. Default: Databricks Job. |
+| `generate_realtime_orders` | Append 100–10,000 new orders. Window: `latest` / `last_2` / `last_3` / `all`. |
+| `etl_star_historical` | Overwrite star dims and facts from OLTP. |
+| `etl_star_cdc` | Apply Delta change feed from `customer_order` into `fact_sales`. |
+
+Customer-first contract (same warehouse; hydrate one customer after listing
+IDs): `list_customer_ids`, `get_customer_oltp`, `get_customer_star`. Those
+belong on this server, not on Genie.
 
 ## Fraud agents (inside `ecommerce_genie_ontology`)
 
