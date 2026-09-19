@@ -522,10 +522,7 @@ the box on that GitHub Action). Do not start from Retail Analytics for Case 15.
 ### Fraud Geo Agent
 
 **What it is.** A Databricks Genie space titled **Fraud Geo Agent**. Step 02
-(or GitHub Action **02 - Fraud Agent - 10 - Fraud Geo Agent**) creates it with `create_agents --agent-id geo`. It owns
-only Case 15 — impossible geography: the same customer has two shipping
-regions within one hour. It answers questions; it does not run Spark load
-jobs and it does not call `mcp-ecommerce-oltp`.
+(or GitHub Action **02 - Fraud Agent - 10 - Fraud Geo Agent**) creates it with `create_agents --agent-id geo`. In this repo that means `case_ids: ("15",)` — this space is **assigned to investigate Case 15 only** (impossible geography: the same customer has two shipping regions within one hour). That is a routing label in `fraud_agents.py`, not an AI “ownership” concept. It answers questions; it does not run Spark load jobs and it does not call `mcp-ecommerce-oltp`.
 
 **Structure** (serialized space `version: 2` from `serialized_fraud_space`):
 
@@ -789,7 +786,7 @@ Cursor / Claude Desktop:
 | Tool | What it does |
 |---|---|
 | `list_fraud_cases` | The 15 named fraud cases (evidence packs, not full tables). |
-| `list_fraud_agents` | The 10 specialists and which cases each owns. |
+| `list_fraud_agents` | The 10 specialists and which case ids each is assigned (`case_ids`). |
 | `run_fraud_case` | Run one case (`01`–`15`). At most 50 evidence rows. |
 | `run_fraud_agent_cases` | Run every pack owned by one specialist. |
 | `initiate_fraud_analytics` | Date range in; server finds IDs; writes `analytics_log` + per-customer counts. |
