@@ -1,4 +1,4 @@
-name: 01 - Setup - Step 03 - Invoke Retail Analytics Genie
+name: 01 - Setup - Step 04 - Invoke Retail Analytics Genie
 
 on:
   workflow_dispatch:

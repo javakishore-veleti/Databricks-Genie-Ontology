@@ -1,4 +1,4 @@
-name: 01 - Setup - Step 12 - Pipeline Realtime Orders and CDC Star Schema
+name: 01 - Setup - Step 13 - Pipeline Realtime Orders and CDC Star Schema
 
 on:
   workflow_dispatch:

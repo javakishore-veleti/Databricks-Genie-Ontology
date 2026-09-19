@@ -80,6 +80,20 @@ class WorkflowOrchestrator:
     def provision_warehouse(self, ctx: WhCtx) -> None:
         self._factory.wh_facade().provision(ctx)
 
+    def publish_mcp(self) -> None:
+        from ecommerce_genie_ontology.adapter_databricks.daos.apps_dao import MCP_APP_NAME
+
+        apps = self._factory.adapter_factory().apps_dao()
+        source = apps.upload_bundle()
+        apps.create_or_get()
+        app = apps.deploy(source)
+        url = apps.url(app)
+        print(f"Custom MCP app {MCP_APP_NAME} ready")
+        if url:
+            print(f"MCP {url}")
+        print("Playground / Supervisor lists this app because the name starts with mcp-.")
+        print("Classic Genie spaces still use /api/2.0/mcp/genie/{SPACE_ID} only.")
+
     def truncate(self, ctx: TcCtx) -> None:
         self._factory.tc_facade().truncate(ctx)
 

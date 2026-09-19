@@ -47,6 +47,26 @@ mcp.tool()(mcp_tools.etl_star_cdc)
 mcp.tool()(mcp_tools.query_dataset)
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    import argparse
+    import os
+
     load_env()
+    parser = argparse.ArgumentParser(prog="genie-ontology mcp")
+    parser.add_argument(
+        "--http",
+        action="store_true",
+        help="Serve streamable HTTP at /mcp (Databricks App). Default is stdio.",
+    )
+    parser.add_argument("--host", default=os.getenv("HOST", "0.0.0.0"))
+    parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "8000")))
+    args = parser.parse_args(argv)
+    if args.http or os.getenv("MCP_TRANSPORT", "").lower() == "http":
+        mcp.run(
+            transport="streamable-http",
+            host=args.host,
+            port=args.port,
+            streamable_http_path="/mcp",
+        )
+        return
     mcp.run(transport="stdio")

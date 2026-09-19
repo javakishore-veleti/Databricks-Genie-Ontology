@@ -58,6 +58,7 @@ class DyFacadeImpl:
             return
 
         client = self._account.workspace_client(workspace)
+        _delete_mcp_app(client, notes)
         warehouse = _find_warehouse(client, warehouse_name)
         if warehouse is not None and warehouse.id:
             try:
@@ -90,6 +91,18 @@ class DyFacadeImpl:
         notes.append(f"deleted workspace {workspace_name}")
         ctx.resp.message = "; ".join(notes)
         print(ctx.resp.message)
+
+
+def _delete_mcp_app(client, notes: list[str]) -> None:
+    from ecommerce_genie_ontology.adapter_databricks.daos.apps_dao import MCP_APP_NAME
+
+    try:
+        client.api_client.do("DELETE", f"/api/2.0/apps/{MCP_APP_NAME}")
+        notes.append(f"deleted app {MCP_APP_NAME}")
+        print(f"OK    deleted app {MCP_APP_NAME}")
+    except Exception as exc:
+        notes.append(f"app delete skipped: {exc}")
+        print(f"SKIP  delete app {MCP_APP_NAME} -> {exc}")
 
 
 def _find_warehouse(client, name: str):

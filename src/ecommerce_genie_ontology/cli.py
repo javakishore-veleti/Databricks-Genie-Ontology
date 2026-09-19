@@ -77,7 +77,14 @@ class CliApp:
         if args.command == "mcp":
             from ecommerce_genie_ontology.mcp.server import main as mcp_main
 
-            mcp_main()
+            extra: list[str] = []
+            if getattr(args, "http", False):
+                extra.append("--http")
+            if getattr(args, "mcp_host", ""):
+                extra.extend(["--host", args.mcp_host])
+            if getattr(args, "mcp_port", None):
+                extra.extend(["--port", str(args.mcp_port)])
+            mcp_main(extra or None)
             return 0
         if args.command == "fraud-agent":
             from ecommerce_genie_ontology.mcp.agent import run_fraud_agent
@@ -98,6 +105,9 @@ class CliApp:
             ctx = WhCtx(WhReq(), WhResp())
             self._runner.provision_warehouse(ctx)
             print(ctx.resp)
+            return 0
+        if args.workflow == "publish_mcp":
+            self._runner.publish_mcp()
             return 0
         if args.workflow == "truncate":
             ctx = TcCtx(
@@ -207,6 +217,7 @@ class CliApp:
                 "provision_warehouse",
                 "provision",
                 "create_agents",
+                "publish_mcp",
                 "invoke_agents",
                 "cleanup",
                 "truncate",
@@ -270,7 +281,10 @@ class CliApp:
         serve = sub.add_parser("serve", help="Start the FastAPI HTTP interface")
         serve.add_argument("--host", default="127.0.0.1")
         serve.add_argument("--port", type=int, default=8000)
-        sub.add_parser("mcp", help="Start the operational MCP server on stdio")
+        mcp_cmd = sub.add_parser("mcp", help="Start the operational MCP server (stdio or Databricks App HTTP)")
+        mcp_cmd.add_argument("--http", action="store_true", help="Streamable HTTP at /mcp")
+        mcp_cmd.add_argument("--host", dest="mcp_host", default="0.0.0.0")
+        mcp_cmd.add_argument("--port", dest="mcp_port", type=int, default=8000)
         fraud = sub.add_parser("fraud-agent", help="Run 15 fraud evidence packs (or a subset) via SQL")
         fraud.add_argument(
             "--cases",

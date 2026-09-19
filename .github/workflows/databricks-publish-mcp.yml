@@ -1,4 +1,4 @@
-name: 01 - Setup - Step 11 - Run ETL Star Schema - CDC Data
+name: 01 - Setup - Step 03 - Publish ecommerce-oltp MCP App
 
 on:
   workflow_dispatch:
@@ -7,13 +7,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: databricks-etl-cdc
+  group: databricks-publish-mcp
   cancel-in-progress: false
 
 jobs:
-  etl-cdc:
+  publish-mcp:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 30
     env:
       DATABRICKS_ACCOUNT_ID: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
       DATABRICKS_ACCOUNT_HOST: ${{ secrets.DATABRICKS_ACCOUNT_HOST }}
@@ -33,7 +33,5 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Databricks env
         uses: ./.github/actions/setup-databricks
-      - name: Deploy Spark jobs
-        run: uv run genie-ontology deploy
-      - name: ETL CDC into fact_sales
-        run: uv run genie-ontology run etl_cdc --as-job
+      - name: Publish mcp-ecommerce-oltp App
+        run: uv run genie-ontology run publish_mcp

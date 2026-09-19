@@ -1,4 +1,4 @@
-name: 01 - Setup - Step 07 - Generate Historical Data
+name: 01 - Setup - Step 08 - Generate Historical Data
 
 on:
   workflow_dispatch:

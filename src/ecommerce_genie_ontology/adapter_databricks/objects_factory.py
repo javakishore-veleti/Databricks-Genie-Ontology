@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ecommerce_genie_ontology.adapter_databricks.daos.apps_dao import AppsDao
 from ecommerce_genie_ontology.adapter_databricks.daos.genie_dao import GenieDao
 from ecommerce_genie_ontology.adapter_databricks.daos.jobs_dao import JobsDao
 from ecommerce_genie_ontology.adapter_databricks.daos.sql_dao import SqlDao
@@ -68,6 +69,9 @@ class AdapterDatabricksObjectsFactory(ObjectsFactory):
 
     def jobs_dao(self) -> JobsDao:
         return self.singleton("jobs_dao", lambda: JobsDao(self.session(), self.settings()))
+
+    def apps_dao(self) -> AppsDao:
+        return self.singleton("apps_dao", lambda: AppsDao(self.session()))
 
     def sql_facade(self) -> SqlFacade:
         return self.singleton("sql_facade", lambda: SqlFacadeImpl(self.sql_dao()))
