@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 860" role="img">
+  <rect width="1280" height="860" fill="#f7fafc"/>
+  <text x="40" y="44" font-family="Georgia, 'Times New Roman', serif" font-size="26" fill="#1e3a5f">Sales star schema</text>
+  <text x="40" y="74" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#5b6b80">Grain: one sales line. Conformed customer, date, product, and store.</text>
+  <line x1="640.0" y1="458.0" x2="640.0" y2="158.0" stroke="#93c5fd" stroke-width="3"/><line x1="640.0" y1="458.0" x2="940.0" y2="458.0" stroke="#93c5fd" stroke-width="3"/><line x1="640.0" y1="458.0" x2="640.0" y2="758.0" stroke="#93c5fd" stroke-width="3"/><line x1="640.0" y1="458.0" x2="340.0" y2="458.0" stroke="#93c5fd" stroke-width="3"/>
+  <rect x="490.0" y="370.0" width="300" height="176" rx="18" fill="#2563eb"/>
+  <text x="640.0" y="402.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#ffffff">fact_sales</text>
+  <text x="640.0" y="428.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#eff6ff">order_id</text>
+<text x="640.0" y="448.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#eff6ff">date_key  ·  product_key</text>
+<text x="640.0" y="468.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#eff6ff">customer_key  ·  store_key</text>
+<text x="640.0" y="488.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#eff6ff">quantity  ·  unit_price  ·  revenue</text>
+  
+        <g>
+          <rect x="516.0" y="84.0" width="248" height="148" rx="16" fill="#ffffff" stroke="#3b82f6" stroke-width="1.8"/>
+          <text x="640.0" y="116.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#1d4ed8">dim_date</text>
+          <text x="640.0" y="146.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">date_key</text>
+<text x="640.0" y="166.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">calendar_date  ·  year</text>
+<text x="640.0" y="186.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">quarter  ·  month</text>
+<text x="640.0" y="206.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">day_of_week  ·  weekend</text>
+        </g>
+        <g>
+          <rect x="816.0" y="384.0" width="248" height="148" rx="16" fill="#ffffff" stroke="#3b82f6" stroke-width="1.8"/>
+          <text x="940.0" y="416.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#1d4ed8">dim_product</text>
+          <text x="940.0" y="446.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">product_key</text>
+<text x="940.0" y="466.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">sku  ·  product_name</text>
+<text x="940.0" y="486.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">category  ·  brand</text>
+<text x="940.0" y="506.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">unit_cost</text>
+        </g>
+        <g>
+          <rect x="516.0" y="684.0" width="248" height="148" rx="16" fill="#ffffff" stroke="#3b82f6" stroke-width="1.8"/>
+          <text x="640.0" y="716.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#1d4ed8">dim_store</text>
+          <text x="640.0" y="746.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">store_key</text>
+<text x="640.0" y="766.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">store_name</text>
+<text x="640.0" y="786.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">region  ·  channel</text>
+        </g>
+        <g>
+          <rect x="216.0" y="384.0" width="248" height="148" rx="16" fill="#ffffff" stroke="#3b82f6" stroke-width="1.8"/>
+          <text x="340.0" y="416.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#1d4ed8">dim_customer</text>
+          <text x="340.0" y="446.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">customer_key</text>
+<text x="340.0" y="466.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">customer_name</text>
+<text x="340.0" y="486.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">segment  ·  region</text>
+<text x="340.0" y="506.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#475569">signup_date</text>
+        </g>
+</svg>

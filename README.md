@@ -70,23 +70,25 @@ Do not hang wire transfers or card dues off `customer_order` / `fact_sales`.
 Add a second grain: **posting** (`customer_transaction` / `fact_transaction`)
 with account, type, counterparty, amount, and balance before/after.
 
-![Business data architecture](docs/images/business-data-architecture.png)
+![Customer, transaction types, and banks](docs/images/customer-banks-transactions.svg)
+
+![Business data architecture](docs/images/business-data-architecture.svg)
 
 **Sales star** — grain is one sales line.
 
-![Sales star schema](docs/images/star-schema-sales.png)
+![Sales star schema](docs/images/star-schema-sales.svg)
 
 **Returns star** — grain is one return, conformed to the same customer, date, and product.
 
-![Returns star schema](docs/images/star-schema-returns.png)
+![Returns star schema](docs/images/star-schema-returns.svg)
 
 **Inventory star** — grain is product and store on a snapshot date (order vs stock).
 
-![Inventory star schema](docs/images/star-schema-inventory.png)
+![Inventory star schema](docs/images/star-schema-inventory.svg)
 
 **Funds-movement star** — grain is one posting. Customer and date are shared; account, type, and counterparty are new.
 
-![Funds-movement star schema](docs/images/star-schema-transactions.png)
+![Funds-movement star schema](docs/images/star-schema-transactions.svg)
 
 **MCP contract (customer first)**
 
