@@ -734,7 +734,7 @@ SQL.
 |---|---|---|
 | Genie One | `{DATABRICKS_HOST}/api/2.0/mcp/genie` | Natural-language questions across the workspace |
 | Genie Agent | `{DATABRICKS_HOST}/api/2.0/mcp/genie/{GENIE_SPACE_ID}` | Questions scoped to one Genie space (retail analytics or one fraud specialist) |
-| Databricks SQL | `{DATABRICKS_HOST}/api/2.0/mcp/sql` | A query you already wrote (not fraud generate / CDC) |
+| Databricks SQL | `{DATABRICKS_HOST}/api/2.0/mcp/sql` | The **MCP client** already has a SQL string (you typed it, Cursor/Claude wrote it, or an agent composed it). Databricks only executes it. Genie is not in this path. Not for fraud generate / CDC. |
 
 Genie One / Genie Agent tools (the client calls `genie_ask`; the rest are for
 the in-flight turn):
