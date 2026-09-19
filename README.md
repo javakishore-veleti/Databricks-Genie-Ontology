@@ -1,14 +1,10 @@
-# Ecommerce Genie Ontology workflows
+# Databricks Genie Ontology
 
-Programmatic version of the Northwind Retail **Genie Ontology** demo. The
-reference notebooks in [`../genie_ontology`](../genie_ontology) stay untouched.
-This repo turns each of those `.py` files into a **workflow task** and runs them
-through a local Python script or FastAPI (credentials from `.env`) instead of
-importing the folder into Databricks by hand.
-
-Layers depend inward only: **api → workflows → adapter_databricks**, with shared
-contracts in **common**. Databricks can be swapped by adding another adapter that
-implements the same interfaces.
+Governed customer sales and funds-movement data on Databricks: Unity Catalog,
+OLTP, star schema, and fraud-ready MCP. Databricks **Genie** agents run in the
+workspace. Portal teams call **LangGraph**, **Google ADK**, or **AWS Strands**
+through FastAPI. Provision, load, and tear down with GitHub Actions — no
+notebook import.
 
 ## Business Context
 
