@@ -53,8 +53,11 @@ Template URLs only — replace the `{placeholders}`:
 - Discover: `https://{WORKSPACE_HOST}/search/discover`
 - This run: `https://github.com/{OWNER}/{REPO}/actions/runs/{RUN_ID}`
 
+Fresh start: run **01 - Setup - Step 100 - Create All Together**. It chains 01 → 02 → 03 → 04 → 06 → 07. Atomic steps stay 01–10 so we can insert 11, 12, … in the middle later; 100+ stays the composite.
+
 | S. No | GitHub workflow name | Time | What to look at | Comments |
 |---|---|---|---|---|
+| 0 | 01 - Setup - Step 100 - Create All Together | 40–90 min | Same checks as Steps 01, 02, 03, 04, 06, 07 | One **Run workflow**. Skips Step 05 (optional Genie smoke) and Step 08 (06+07 already). `row_count` and `months` pass through. Add a new atomic step later, then add one `needs:` job here. |
 | 1 | 01 - Setup - Step 01 - Create Databricks stack | **5 min** | GitHub job green; workspace **RUNNING**; SQL warehouse up; catalog empty tables | Measured 4 min 50 s. Workspace 38 s, warehouse 20 s, catalog 2 min 43 s, deploy jobs 54 s. Account page `https://accounts.cloud.databricks.com/workspaces/{WORKSPACE_ID}?account_id={ACCOUNT_ID}`. Then open `https://{WORKSPACE_HOST}`. Starts the 3-hour destroy timer. Does **not** create Genie spaces. |
 | 2 | 01 - Setup - Step 02 - Create all Genie agents | **2 min** | 11 Genie spaces (Retail Analytics + 10 fraud specialists) | Measured 1 min 37 s. Genie `https://{WORKSPACE_HOST}/genie`. Rerun this if agents fail; do not rerun Step 01. Each space MCP: `https://{WORKSPACE_HOST}/api/2.0/mcp/genie/{SPACE_ID}`. |
 | 3 | 01 - Setup - Step 03 - Publish ecommerce-oltp MCP App | 10–20 min | App **mcp-ecommerce-oltp** on Apps | `https://{WORKSPACE_HOST}/apps`. MCP `{APP_URL}/mcp`. Playground / Supervisor list `mcp-*` apps. Classic Genie still uses Genie MCP only. |
@@ -75,7 +78,7 @@ Template URLs only — replace the `{placeholders}`:
 | 18 | 02 - Fraud Agent - 10 - Fraud Geo Agent | 3–10 min | Space **Fraud Geo Agent** | Default system prompt is the Case 15 notes. **system_prompt** overrides it. Five starter-question checkboxes ask those prompts. **additional_prompt** is comma-separated customer ids. |
 | 19 | 01 - Setup - Step 09 - Destroy Databricks stack | 10–20 min | Workspace gone from account console; cleanup email | Type `DELETE`. Deletes `mcp-ecommerce-oltp`, catalog, warehouse, workspace. Cancels the 3-hour timer. Account list: `https://accounts.cloud.databricks.com/?account_id={ACCOUNT_ID}`. |
 
-Historical generate / realtime CDC Actions are retired (`z_retired_*`). Use Step 06 + 07 (or 08) for data.
+Historical generate / realtime CDC Actions are retired (`z_retired_*`). Use Step 100 for a full recreate, or Step 06 + 07 (or 08) for data only.
 
 ### Screenshots
 
@@ -349,7 +352,7 @@ uv sync
 
 Use **Actions → Run workflow**. Create starts a 3-hour timer; a later Create cancels the previous timer. Destroy can be run by hand any time before that. Pipeline workflows are also **manual** (`workflow_dispatch` only).
 
-**01 - Setup**
+**01 - Setup** — 01–99 are atomic (rerun one, or insert a new number in the middle). 100+ is a composite.
 
 1. **01 - Setup - Step 01 - Create Databricks stack** — workspace, SQL warehouse, catalog, deploy jobs
 2. **01 - Setup - Step 02 - Create all Genie agents** — Retail Analytics + 10 fraud specialists
@@ -361,6 +364,7 @@ Use **Actions → Run workflow**. Create starts a 3-hour timer; a later Create c
 8. **01 - Setup - Step 08 - Pipeline next 100000 OLTP and next N months star**
 9. **01 - Setup - Step 09 - Destroy Databricks stack**
 10. **01 - Setup - Step 10 - Destroy Databricks stack in 3 hours**
+11. **01 - Setup - Step 100 - Create All Together** — 01 → 02 → 03 → 04 → 06 → 07. Fresh start after Destroy.
 
 **02 - Fraud Agent** (each Action creates that specialist’s Genie space; Databricks hosts Genie MCP at `/api/2.0/mcp/genie/{space_id}`)
 

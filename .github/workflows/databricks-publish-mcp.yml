@@ -2,6 +2,7 @@ name: 01 - Setup - Step 03 - Publish ecommerce-oltp MCP App
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read

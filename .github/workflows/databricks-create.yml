@@ -2,6 +2,7 @@ name: 01 - Setup - Step 01 - Create Databricks stack
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read

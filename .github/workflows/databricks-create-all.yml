@@ -1,0 +1,80 @@
+name: 01 - Setup - Step 100 - Create All Together
+
+# Composite. Atomic steps stay 01–10 (and later 11, 12, …) so we can insert
+# in the middle. Step 100+ is the fresh-start chain. Edit the job list below
+# when a new atomic step should run in this sequence.
+
+on:
+  workflow_dispatch:
+    inputs:
+      row_count:
+        description: OLTP rows for Step 06 (max 100000)
+        required: true
+        default: "100000"
+        type: string
+      months:
+        description: Months for Step 07 (1-12)
+        required: true
+        default: "3"
+        type: choice
+        options:
+          - "1"
+          - "2"
+          - "3"
+          - "4"
+          - "5"
+          - "6"
+          - "7"
+          - "8"
+          - "9"
+          - "10"
+          - "11"
+          - "12"
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: databricks-create-all
+  cancel-in-progress: false
+
+jobs:
+  step-01-create:
+    name: Step 01 - Create Databricks stack
+    uses: ./.github/workflows/databricks-create.yml
+    secrets: inherit
+
+  step-02-agents:
+    name: Step 02 - Create all Genie agents
+    needs: step-01-create
+    uses: ./.github/workflows/databricks-create-agents.yml
+    secrets: inherit
+
+  step-03-mcp:
+    name: Step 03 - Publish ecommerce-oltp MCP App
+    needs: step-02-agents
+    uses: ./.github/workflows/databricks-publish-mcp.yml
+    secrets: inherit
+
+  step-04-domains:
+    name: Step 04 - Publish Discover domains
+    needs: step-03-mcp
+    uses: ./.github/workflows/databricks-publish-domains.yml
+    secrets: inherit
+
+  step-06-oltp:
+    name: Step 06 - Populate next 100000 OLTP rows
+    needs: step-04-domains
+    uses: ./.github/workflows/databricks-generate-next-oltp.yml
+    secrets: inherit
+    with:
+      row_count: ${{ inputs.row_count }}
+
+  step-07-star:
+    name: Step 07 - Populate next N months of dims and facts
+    needs: step-06-oltp
+    uses: ./.github/workflows/databricks-etl-next-months.yml
+    secrets: inherit
+    with:
+      months: ${{ inputs.months }}

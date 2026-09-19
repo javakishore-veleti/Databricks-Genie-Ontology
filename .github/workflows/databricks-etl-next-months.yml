@@ -21,6 +21,13 @@ on:
           - "10"
           - "11"
           - "12"
+  workflow_call:
+    inputs:
+      months:
+        description: Months to load from the last tracker date (1-12)
+        required: false
+        default: "3"
+        type: string
 
 permissions:
   contents: read

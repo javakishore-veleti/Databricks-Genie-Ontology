@@ -8,6 +8,13 @@ on:
         required: true
         default: "100000"
         type: string
+  workflow_call:
+    inputs:
+      row_count:
+        description: OLTP rows to append (max 100000)
+        required: false
+        default: "100000"
+        type: string
 
 permissions:
   contents: read
