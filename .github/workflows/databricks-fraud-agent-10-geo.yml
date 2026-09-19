@@ -4,7 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       system_prompt:
-        description: Override Fraud Geo Agent system prompt. Empty keeps detect + required-data notes (no next steps).
+        description: Override the Fraud Geo Agent system prompt. Leave empty to keep the default Case 15 notes (detect, required data, next steps).
+        required: false
+        default: ""
+        type: string
+      additional_prompt:
+        description: User additional prompt — comma-separated customer ids to ask this agent about. Leave empty to skip the ask.
         required: false
         default: ""
         type: string
@@ -20,3 +25,34 @@ jobs:
       agent_title: Fraud Geo Agent
       system_prompt: ${{ inputs.system_prompt }}
     secrets: inherit
+
+  ask:
+    needs: create
+    if: inputs.additional_prompt != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DATABRICKS_ACCOUNT_ID: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
+      DATABRICKS_ACCOUNT_HOST: ${{ secrets.DATABRICKS_ACCOUNT_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_WORKSPACE_NAME: ${{ secrets.DATABRICKS_WORKSPACE_NAME }}
+      DATABRICKS_AWS_REGION: ${{ secrets.DATABRICKS_AWS_REGION }}
+      DATABRICKS_WORKSPACE_ADMIN_EMAILS: ${{ secrets.DATABRICKS_WORKSPACE_ADMIN_EMAILS }}
+      DATABRICKS_WAREHOUSE_NAME: ${{ secrets.DATABRICKS_WAREHOUSE_NAME }}
+      DATABRICKS_CATALOG: ${{ secrets.DATABRICKS_CATALOG }}
+      DATABRICKS_SCHEMA: ${{ secrets.DATABRICKS_SCHEMA }}
+      DATABRICKS_OLTP_SCHEMA: ${{ secrets.DATABRICKS_OLTP_SCHEMA }}
+      ADDITIONAL_PROMPT: ${{ inputs.additional_prompt }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Databricks env
+        uses: ./.github/actions/setup-databricks
+      - name: Ask Fraud Geo Agent about customer ids
+        run: >
+          uv run genie-ontology run invoke_agents
+          --agent-id geo
+          --question "Run fraud case 15 Impossible geo two regions one hour for customer ids: ${ADDITIONAL_PROMPT}"

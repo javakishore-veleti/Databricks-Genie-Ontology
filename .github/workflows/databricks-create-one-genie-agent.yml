@@ -41,7 +41,9 @@ jobs:
       - name: Setup Databricks env
         uses: ./.github/actions/setup-databricks
       - name: Create ${{ inputs.agent_title }} (Genie MCP)
+        env:
+          SYSTEM_PROMPT: ${{ inputs.system_prompt }}
         run: >
           uv run genie-ontology run create_agents
           --agent-id "${{ inputs.agent_id }}"
-          --system-prompt "${{ inputs.system_prompt }}"
+          --system-prompt "$SYSTEM_PROMPT"

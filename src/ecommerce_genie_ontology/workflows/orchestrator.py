@@ -25,6 +25,14 @@ class WorkflowOrchestrator:
             workflow = self._factory.workflow(workflow_name)
             if workflow_name == "invoke_agents":
                 self._factory.invoke_agents_workspace_facade().question = ctx.req.question
+                if ctx.req.agent_id:
+                    from ecommerce_genie_ontology.common.constants.fraud_agents import agent_by_id
+
+                    agent = agent_by_id(ctx.req.agent_id)
+                    if agent:
+                        self._factory.adapter_factory().session().context.agent_title = str(
+                            agent["title"]
+                        )
             if workflow_name == "cleanup":
                 self._factory.cleanup_workspace_facade().confirm = ctx.req.confirm
             if workflow_name == "create_agents":
