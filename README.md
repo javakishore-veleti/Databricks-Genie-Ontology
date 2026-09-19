@@ -28,6 +28,7 @@ and its AI Agents.
 - [Create the catalog, schema, and star tables](#create-the-catalog-schema-and-star-tables)
 - [Drop the catalog](#drop-the-catalog)
 - [HTTP interface](#http-interface)
+- [How Genie Agent Works](#how-genie-agent-works)
 - [MCP tools](#mcp-tools)
   - [MCP tools in Databricks Genie](#mcp-tools-in-databricks-genie)
   - [MCP tools in this codebase](#mcp-tools-in-this-codebase)
@@ -498,6 +499,82 @@ npm run ecommerce:api:run
 - `POST /api/v1/ontology/chat` body: `ChReq` (`backend` `langgraph` \| `google_adk` \| `genie`)
 
 Historical generate and ETL should run as Databricks jobs (`as_job: true`, the default) because 15 million orders need Spark. The local process only triggers the job.
+
+## How Genie Agent Works
+
+Start with a **Genie Agent** (a Genie space). Open
+`https://{WORKSPACE_HOST}/genie`, pick **Fraud Geo Agent** (or Retail
+Analytics), and type a prompt. That chat is Databricks Genie, not
+`mcp-ecommerce-oltp`.
+
+SQL does **not** run inside the LLM. Genie is a Databricks service: the
+model writes read-only SQL, the **space’s SQL warehouse** runs it, then
+Genie hands the rows back so the model can write the English answer.
+
+**One turn (prompt given to the agent)**
+
+1. You ask, for example: `Run fraud case 15 Impossible geo two regions one hour`.
+2. **FETCHING_METADATA / FILTERING_CONTEXT** — Genie loads the space tables,
+   Unity Catalog comments, general instructions, example SQL, and this
+   thread. Fraud Geo’s instructions say: self-join `retail_star.fact_order_event`
+   on `customer_key` where `shipping_region_key` differs and `order_ts` is
+   at most 60 minutes apart. Do not use `customer.region`, `fact_sales`, or
+   `fact_inventory` (STALE merchandising).
+3. **ASKING_AI** — Databricks-managed LLM proposes SQL. No warehouse yet.
+   There is no model picker on `/genie`; Databricks chooses the compound
+   stack. Query History and App logs do not name Claude vs GPT.
+4. **PENDING_WAREHOUSE / EXECUTING_QUERY** — Genie submits that SQL to the
+   warehouse on the space (author’s compute). Unity Catalog still filters as
+   **you**. Generated queries are always read-only. Retries stay in Genie.
+5. **COMPLETED** — chat shows generated SQL, the result table, and a short
+   answer.
+
+**What kind of SQL for that prompt**
+
+Genie should produce an order-grain self-join, not a midnight `fact_sales`
+roll-up. Same shape as Case 15 in this repo:
+
+```sql
+WITH pairs AS (
+  SELECT
+    a.customer_key,
+    a.order_id AS order1_id,
+    a.order_ts AS order1_ts,
+    a.shipping_region_key AS region1,
+    b.order_id AS order2_id,
+    b.order_ts AS order2_ts,
+    b.shipping_region_key AS region2,
+    (UNIX_TIMESTAMP(b.order_ts) - UNIX_TIMESTAMP(a.order_ts)) / 60.0 AS minutes_apart
+  FROM retail_star.fact_order_event a
+  JOIN retail_star.fact_order_event b
+    ON a.customer_key = b.customer_key
+   AND a.shipping_region_key <> b.shipping_region_key
+   AND b.order_ts > a.order_ts
+   AND (UNIX_TIMESTAMP(b.order_ts) - UNIX_TIMESTAMP(a.order_ts)) <= 3600
+  WHERE a.status <> 'cancelled' AND b.status <> 'cancelled'
+)
+SELECT * FROM pairs
+ORDER BY minutes_apart, customer_key
+LIMIT 50
+```
+
+Seeded Case 15 customers use `address_id` `*-AGEO` (West vs Northeast) and
+two orders 25 minutes apart. After Step 06 + 07 (or Step 100), this should
+return rows. `mv_order_event` is enough when you only need counts.
+
+**Where to read it**
+
+| What you want | Where |
+|---|---|
+| Question, generated SQL, thoughts, thumbs | Space → **Monitor** (`https://{WORKSPACE_HOST}/genie` → agent → Monitor). Needs CAN MANAGE. |
+| Same + `statement_id` + statuses | Open the SQL attachment on the message. API: `GET /api/2.0/genie/spaces/{SPACE_ID}/conversations/{CONVERSATION_ID}/messages` |
+| Warehouse run (SQL text, duration, user) | **Query History** `https://{WORKSPACE_HOST}/sql/history` — filter Genie / `genie_space_id`. Join on `statement_id`. |
+| Who asked, when | Audit: Genie Agent events (not the SQL text) |
+| Our MCP tools | **Not here.** Classic `/genie` never calls `mcp-ecommerce-oltp`. Watch that App only from Playground (Tools-enabled model → MCP Servers). |
+
+Step 05 and `genie_ask` use the same path: Genie MCP
+`https://{WORKSPACE_HOST}/api/2.0/mcp/genie/{SPACE_ID}` → warehouse SQL →
+`genie_get_query_result`.
 
 ## MCP tools
 
