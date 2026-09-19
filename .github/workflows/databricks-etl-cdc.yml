@@ -1,4 +1,4 @@
-name: 01 - Setup - Step 08 - Run ETL Star Schema - CDC Data
+name: 01 - Setup - Step 10 - Run ETL Star Schema - CDC Data
 
 on:
   workflow_dispatch:

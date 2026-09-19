@@ -1,4 +1,4 @@
-name: 01 - Setup - Step 04 - Pipeline next 100000 OLTP and next N months star
+name: 01 - Setup - Step 06 - Pipeline next 100000 OLTP and next N months star
 
 on:
   workflow_dispatch:

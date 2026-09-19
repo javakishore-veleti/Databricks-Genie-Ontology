@@ -1,4 +1,4 @@
-name: 01 - Setup - Step 06 - Run ETL Star Schema - Historical Data
+name: 01 - Setup - Step 08 - Run ETL Star Schema - Historical Data
 
 on:
   workflow_dispatch:

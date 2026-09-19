@@ -52,12 +52,12 @@ Template URLs only — replace the `{placeholders}`:
 
 | S. No | GitHub workflow name | Time | What to look at | Comments |
 |---|---|---|---|---|
-| 1 | 01 - Setup - Step 01 - Create Databricks stack | 20–45 min | GitHub job green; workspace **RUNNING**; SQL warehouse up; catalog empty tables; 11 Genie spaces | Account page `https://accounts.cloud.databricks.com/workspaces/{WORKSPACE_ID}?account_id={ACCOUNT_ID}`. Then open `https://{WORKSPACE_HOST}`. Starts the 3-hour destroy timer. |
-| 2 | 01 - Setup - Step 02 - Populate next 100000 OLTP rows | 10–40 min | `ingestion_tracker` / `ingestion_log`; row counts on `customer_order` and `customer_transaction` | Catalog `https://{WORKSPACE_HOST}/explore/data/{CATALOG}`. Default 100,000 rows. Repeat until `caught_up`. |
-| 3 | 01 - Setup - Step 03 - Populate next N months of dims and facts | 10–30 min | `fact_sales`, `fact_returns`, `fact_inventory`, `fact_transaction` grow for that window | Same catalog. Months 1–12 (default 3). No error if less OLTP remains. |
-| 4 | 01 - Setup - Step 04 - Pipeline next 100000 OLTP and next N months star | 20–60 min | Step 2 then step 3 in one run | Use this instead of running 2 and 3 separately. |
-| 5 | 01 - Setup - Step 11 - Create all Genie agents | 5–15 min | 11 Genie spaces (Retail Analytics + 10 fraud specialists) | Genie `https://{WORKSPACE_HOST}/genie`. Skip if Step 01 already created them. Each space MCP: `https://{WORKSPACE_HOST}/api/2.0/mcp/genie/{SPACE_ID}`. |
-| 6 | 01 - Setup - Step 12 - Invoke Retail Analytics Genie | 5–20 min | Sample questions return SQL + a short answer | Confirms Genie MCP on the retail space. Optional question input. |
+| 1 | 01 - Setup - Step 01 - Create Databricks stack | 20–45 min | GitHub job green; workspace **RUNNING**; SQL warehouse up; catalog empty tables | Account page `https://accounts.cloud.databricks.com/workspaces/{WORKSPACE_ID}?account_id={ACCOUNT_ID}`. Then open `https://{WORKSPACE_HOST}`. Starts the 3-hour destroy timer. Does **not** create Genie spaces. |
+| 2 | 01 - Setup - Step 02 - Create all Genie agents | 5–15 min | 11 Genie spaces (Retail Analytics + 10 fraud specialists) | Genie `https://{WORKSPACE_HOST}/genie`. Rerun this if agents fail; do not rerun Step 01. Each space MCP: `https://{WORKSPACE_HOST}/api/2.0/mcp/genie/{SPACE_ID}`. |
+| 3 | 01 - Setup - Step 03 - Invoke Retail Analytics Genie | 5–20 min | Sample questions return SQL + a short answer | Confirms Genie MCP on the retail space. Optional question input. |
+| 4 | 01 - Setup - Step 04 - Populate next 100000 OLTP rows | 10–40 min | `ingestion_tracker` / `ingestion_log`; row counts on `customer_order` and `customer_transaction` | Catalog `https://{WORKSPACE_HOST}/explore/data/{CATALOG}`. Default 100,000 rows. Repeat until `caught_up`. |
+| 5 | 01 - Setup - Step 05 - Populate next N months of dims and facts | 10–30 min | `fact_sales`, `fact_returns`, `fact_inventory`, `fact_transaction` grow for that window | Same catalog. Months 1–12 (default 3). No error if less OLTP remains. |
+| 6 | 01 - Setup - Step 06 - Pipeline next 100000 OLTP and next N months star | 20–60 min | Step 4 then step 5 in one run | Use this instead of running 4 and 5 separately. |
 | 7 | 02 - Fraud Agent - 01 - Fraud Velocity Agent | 3–10 min | Space **Fraud Velocity Agent** | Genie MCP for velocity bursts and split orders. |
 | 8 | 02 - Fraud Agent - 02 - Fraud Address Link Agent | 3–10 min | Space **Fraud Address Link Agent** | Shared-address / duplicate-account hops. |
 | 9 | 02 - Fraud Agent - 03 - Fraud Ship-to Bill-to Agent | 3–10 min | Space **Fraud Ship-to Bill-to Agent** | Ship-to ≠ bill-to. |
@@ -70,7 +70,7 @@ Template URLs only — replace the `{placeholders}`:
 | 16 | 02 - Fraud Agent - 10 - Fraud Geo Agent | 3–10 min | Space **Fraud Geo Agent** | Impossible geography. |
 | 17 | 01 - Setup - Step 13 - Destroy Databricks stack | 10–20 min | Workspace gone from account console; cleanup email | Type `DELETE`. Cancels the 3-hour timer. Account list: `https://accounts.cloud.databricks.com/?account_id={ACCOUNT_ID}`. |
 
-Optional lab path (not required for the 100k loop): Step 05 Historical, Step 06 ETL Historical, or Step 09 pipeline; realtime CDC is Step 07 + 08 or Step 10.
+Optional lab path (not required for the 100k loop): Step 07 Historical, Step 08 ETL Historical, or Step 11 pipeline; realtime CDC is Step 09 + 10 or Step 12.
 
 ## Business Context
 
@@ -326,18 +326,18 @@ Use **Actions → Run workflow**. Create starts a 3-hour timer; a later Create c
 
 **01 - Setup**
 
-1. **01 - Setup - Step 01 - Create Databricks stack** — workspace, SQL warehouse, catalog, deploy jobs, create all 11 Genie spaces (Genie MCP)
-2. **01 - Setup - Step 02 - Populate next 100000 OLTP rows**
-3. **01 - Setup - Step 03 - Populate next N months of dims and facts**
-4. **01 - Setup - Step 04 - Pipeline next 100000 OLTP and next N months star**
-5. **01 - Setup - Step 05 - Generate Historical Data**
-6. **01 - Setup - Step 06 - Run ETL Star Schema - Historical Data**
-7. **01 - Setup - Step 07 - Generate Realtime Orders Data**
-8. **01 - Setup - Step 08 - Run ETL Star Schema - CDC Data**
-9. **01 - Setup - Step 09 - Pipeline Historical OLTP and Star Schema**
-10. **01 - Setup - Step 10 - Pipeline Realtime Orders and CDC Star Schema**
-11. **01 - Setup - Step 11 - Create all Genie agents** — Retail Analytics + 10 fraud specialists
-12. **01 - Setup - Step 12 - Invoke Retail Analytics Genie**
+1. **01 - Setup - Step 01 - Create Databricks stack** — workspace, SQL warehouse, catalog, deploy jobs
+2. **01 - Setup - Step 02 - Create all Genie agents** — Retail Analytics + 10 fraud specialists
+3. **01 - Setup - Step 03 - Invoke Retail Analytics Genie**
+4. **01 - Setup - Step 04 - Populate next 100000 OLTP rows**
+5. **01 - Setup - Step 05 - Populate next N months of dims and facts**
+6. **01 - Setup - Step 06 - Pipeline next 100000 OLTP and next N months star**
+7. **01 - Setup - Step 07 - Generate Historical Data**
+8. **01 - Setup - Step 08 - Run ETL Star Schema - Historical Data**
+9. **01 - Setup - Step 09 - Generate Realtime Orders Data**
+10. **01 - Setup - Step 10 - Run ETL Star Schema - CDC Data**
+11. **01 - Setup - Step 11 - Pipeline Historical OLTP and Star Schema**
+12. **01 - Setup - Step 12 - Pipeline Realtime Orders and CDC Star Schema**
 13. **01 - Setup - Step 13 - Destroy Databricks stack**
 14. **01 - Setup - Step 14 - Destroy Databricks stack in 3 hours**
 
@@ -598,7 +598,7 @@ The agent never sees 15 million orders. Spark/SQL stay in Databricks. Each fraud
 
 ## OLTP and CDC without GitHub Actions
 
-Same jobs as **01 - Setup** Steps 05–08. Use this only if you are not running those Actions.
+Same jobs as **01 - Setup** Steps 07–10. Use this only if you are not running those Actions.
 
 ```bash
 uv run genie-ontology deploy
@@ -610,7 +610,7 @@ uv run genie-ontology run etl_cdc --as-job
 
 ## Register and run Databricks Jobs without GitHub Actions
 
-Same as **01 - Setup** Steps 01, 11, and 12. Use this only if you are not running those Actions.
+Same as **01 - Setup** Steps 01–03. Use this only if you are not running those Actions.
 
 ```bash
 uv run genie-ontology deploy

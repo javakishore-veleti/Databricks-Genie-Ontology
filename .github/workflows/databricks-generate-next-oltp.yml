@@ -1,4 +1,4 @@
-name: 01 - Setup - Step 02 - Populate next 100000 OLTP rows
+name: 01 - Setup - Step 04 - Populate next 100000 OLTP rows
 
 on:
   workflow_dispatch:

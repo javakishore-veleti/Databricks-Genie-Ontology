@@ -33,6 +33,7 @@ def serialized_space(fq: str) -> str:
             ],
         },
     ]
+    metric_views.sort(key=lambda item: item["identifier"])
     sample_questions = sorted(
         ({"id": hex32(f"sample:{question}"), "question": [question]} for question in SAMPLE_QUESTIONS),
         key=lambda item: item["id"],
@@ -114,6 +115,7 @@ def serialized_fraud_space(star: str, oltp: str, agent: dict) -> str:
     for name, kind, description in SHARED_TABLES:
         identifier = f"{oltp}.{name}" if kind == "oltp" else f"{star}.{name}"
         tables.append({"identifier": identifier, "description": [description]})
+    tables.sort(key=lambda item: item["identifier"])
     names = case_names(agent["case_ids"])  # type: ignore[arg-type]
     questions = [f"Run fraud case {name}" for name in names]
     sample_questions = sorted(

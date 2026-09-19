@@ -1,4 +1,4 @@
-name: 01 - Setup - Step 11 - Create all Genie agents
+name: 01 - Setup - Step 02 - Create all Genie agents
 
 on:
   workflow_dispatch:
@@ -33,7 +33,5 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Databricks env
         uses: ./.github/actions/setup-databricks
-      - name: Deploy jobs
-        run: uv run genie-ontology deploy
       - name: Create Retail Analytics Genie and 10 fraud specialists
         run: uv run genie-ontology run create_agents
