@@ -81,12 +81,15 @@ Optional lab path (not required for the 100k loop): Step 08 Historical, Step 09 
 2. Catalog `retail_oltp` after Step 01 — 13 source tables (`analytics_log`, customers, orders, postings, ingest).
 2b. Catalog `retail_star` after Step 01 — dims, facts, metric views.
 3. Genie Agents after Step 02 — Retail Analytics plus the ten fraud specialists.
+4. Apps after Step 03 — **mcp-ecommerce-oltp** Active on `/apps-v2`.
 
 ![Catalog retail_oltp](docs/images/catalog-retail-oltp.png)
 
 ![Catalog retail_star](docs/images/catalog-retail-star.png)
 
 ![Genie Agents](docs/images/genie-agents.png)
+
+![Apps mcp-ecommerce-oltp](docs/images/apps-mcp-ecommerce-oltp.png)
 
 ## Business Context
 
