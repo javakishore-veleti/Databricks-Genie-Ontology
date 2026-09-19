@@ -73,7 +73,11 @@ jobs:
 
   notify:
     needs: destroy
-    if: success()
+    if: |
+      success() &&
+      secrets.SMTP_HOST != '' &&
+      secrets.CLEANUP_NOTIFY_EMAIL != '' &&
+      (secrets.SMTP_FROM != '' || secrets.SMTP_USERNAME != '')
     runs-on: ubuntu-latest
     steps:
       - name: Email cleanup confirmation
