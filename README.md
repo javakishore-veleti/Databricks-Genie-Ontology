@@ -1,10 +1,12 @@
 # Databricks Genie Ontology
 
-Governed customer sales and funds-movement data on Databricks: Unity Catalog,
-OLTP, star schema, and fraud-ready MCP. Databricks **Genie** agents run in the
-workspace. Portal teams call **LangGraph**, **Google ADK**, or **AWS Strands**
-through FastAPI. Provision, load, and tear down with GitHub Actions — no
-notebook import.
+Governed customer sales and funds-movement data: Unity Catalog, OLTP, star
+schema, and fraud-ready MCP. Portal teams call **LangGraph**, **Google ADK**,
+or **AWS Strands** through FastAPI. Provision, load, and tear down with GitHub
+Actions — no notebook import.
+
+All data management is currently managed in Databricks and Databricks Genie
+and its AI Agents.
 
 ## Business Context
 
