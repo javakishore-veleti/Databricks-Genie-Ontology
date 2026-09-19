@@ -72,6 +72,19 @@ Template URLs only — replace the `{placeholders}`:
 
 Optional lab path (not required for the 100k loop): Step 07 Historical, Step 08 ETL Historical, or Step 11 pipeline; realtime CDC is Step 09 + 10 or Step 12.
 
+### Screenshots
+
+1. Catalog — `docs/images/catalog-explorer.png`
+2. Catalog `retail_oltp` after Step 01 — 13 source tables (`analytics_log`, customers, orders, postings, ingest).
+2b. Catalog `retail_star` after Step 01 — dims, facts, metric views.
+3. Genie Agents after Step 02 — Retail Analytics plus the ten fraud specialists.
+
+![Catalog retail_oltp](docs/images/catalog-retail-oltp.png)
+
+![Catalog retail_star](docs/images/catalog-retail-star.png)
+
+![Genie Agents](docs/images/genie-agents.png)
+
 ## Business Context
 
 ### Customer behavior
