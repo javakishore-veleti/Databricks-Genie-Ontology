@@ -1,4 +1,4 @@
-name: 01 - Setup - Step 09 - Destroy Databricks stack in 3 hours
+name: 01 - Setup - Step 10 - Destroy Databricks stack in 3 hours
 
 on:
   workflow_dispatch:

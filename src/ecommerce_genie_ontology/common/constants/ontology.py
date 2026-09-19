@@ -4,6 +4,45 @@ from __future__ import annotations
 
 DOMAIN_NAMES = ["Sales", "Customer", "Supply Chain", "Finance"]
 
+DISCOVER_DOMAINS = [
+    {
+        "tag_key": "Sales",
+        "subtitle": "Orders, revenue, and certified sales performance.",
+        "description": (
+            "Northwind Retail sales: fact_sales, dim_product, dim_store, and the "
+            "certified metric view mv_sales_performance. Assets tagged Sales appear here."
+        ),
+        "icon": {"name": "PRESENTATION_CHART", "color": "#1B3139"},
+    },
+    {
+        "tag_key": "Customer",
+        "subtitle": "Customers, segments, and return rate.",
+        "description": (
+            "Customer dimension, returns, and mv_customer_returns. Use the Customer Return "
+            "Rate Page for the cross-fact refund ratio."
+        ),
+        "icon": {"name": "USERS_THREE", "color": "#FF3621"},
+    },
+    {
+        "tag_key": "Supply Chain",
+        "subtitle": "Stores, inventory health, and fulfillment.",
+        "description": (
+            "Store and inventory assets tagged Supply Chain, including fact_inventory "
+            "and certified mv_inventory_health."
+        ),
+        "icon": {"name": "PACKAGE", "color": "#00A972"},
+    },
+    {
+        "tag_key": "Finance",
+        "subtitle": "Funds movement, counterparties, and total revenue.",
+        "description": (
+            "Finance-tagged facts and dimensions: fact_transaction, dim_counterparty, "
+            "dim_account, and the Total Revenue Page."
+        ),
+        "icon": {"name": "BANK", "color": "#3BA3F7"},
+    },
+]
+
 ASSET_DOMAINS: dict[str, list[str]] = {
     "dim_product": ["Sales"],
     "dim_store": ["Sales", "Supply Chain"],

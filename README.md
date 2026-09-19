@@ -50,6 +50,7 @@ Template URLs only — replace the `{placeholders}`:
 - Genie MCP (one space): `https://{WORKSPACE_HOST}/api/2.0/mcp/genie/{SPACE_ID}`
 - Apps: `https://{WORKSPACE_HOST}/apps`
 - Custom MCP App: `https://{WORKSPACE_HOST}/apps/mcp-ecommerce-oltp`
+- Discover: `https://{WORKSPACE_HOST}/search/discover`
 - This run: `https://github.com/{OWNER}/{REPO}/actions/runs/{RUN_ID}`
 
 | S. No | GitHub workflow name | Time | What to look at | Comments |
@@ -57,23 +58,24 @@ Template URLs only — replace the `{placeholders}`:
 | 1 | 01 - Setup - Step 01 - Create Databricks stack | **5 min** | GitHub job green; workspace **RUNNING**; SQL warehouse up; catalog empty tables | Measured 4 min 50 s. Workspace 38 s, warehouse 20 s, catalog 2 min 43 s, deploy jobs 54 s. Account page `https://accounts.cloud.databricks.com/workspaces/{WORKSPACE_ID}?account_id={ACCOUNT_ID}`. Then open `https://{WORKSPACE_HOST}`. Starts the 3-hour destroy timer. Does **not** create Genie spaces. |
 | 2 | 01 - Setup - Step 02 - Create all Genie agents | **2 min** | 11 Genie spaces (Retail Analytics + 10 fraud specialists) | Measured 1 min 37 s. Genie `https://{WORKSPACE_HOST}/genie`. Rerun this if agents fail; do not rerun Step 01. Each space MCP: `https://{WORKSPACE_HOST}/api/2.0/mcp/genie/{SPACE_ID}`. |
 | 3 | 01 - Setup - Step 03 - Publish ecommerce-oltp MCP App | 10–20 min | App **mcp-ecommerce-oltp** on Apps | `https://{WORKSPACE_HOST}/apps`. MCP `{APP_URL}/mcp`. Playground / Supervisor list `mcp-*` apps. Classic Genie still uses Genie MCP only. |
-| 4 | 01 - Setup - Step 04 - Invoke Retail Analytics Genie | **3 min** | Sample questions return SQL + a short answer | Measured 3 min 14 s. Confirms Genie MCP on the retail space. Optional question input. |
-| 5 | 01 - Setup - Step 05 - Populate next 100000 OLTP rows | 10–40 min | `ingestion_tracker` / `ingestion_log`; row counts on `customer_order` and `customer_transaction` | Catalog `https://{WORKSPACE_HOST}/explore/data/{CATALOG}`. Default 100,000 rows. Repeat until `caught_up`. |
-| 6 | 01 - Setup - Step 06 - Populate next N months of dims and facts | 10–30 min | `fact_sales`, `fact_returns`, `fact_inventory`, `fact_transaction` grow for that window | Same catalog. Months 1–12 (default 3). No error if less OLTP remains. |
-| 7 | 01 - Setup - Step 07 - Pipeline next 100000 OLTP and next N months star | 20–60 min | Step 5 then step 6 in one run | Use this instead of running 5 and 6 separately. |
-| 8 | 02 - Fraud Agent - 01 - Fraud Velocity Agent | 3–10 min | Space **Fraud Velocity Agent** | Genie MCP for velocity bursts and split orders. |
-| 9 | 02 - Fraud Agent - 02 - Fraud Address Link Agent | 3–10 min | Space **Fraud Address Link Agent** | Shared-address / duplicate-account hops. |
-| 10 | 02 - Fraud Agent - 03 - Fraud Ship-to Bill-to Agent | 3–10 min | Space **Fraud Ship-to Bill-to Agent** | Ship-to ≠ bill-to. |
-| 11 | 02 - Fraud Agent - 04 - Fraud Returns Agent | 3–10 min | Space **Fraud Returns Agent** | High / rapid returns. |
-| 12 | 02 - Fraud Agent - 05 - Fraud First-Order Agent | 3–10 min | Space **Fraud First-Order Agent** | High-value first orders. |
-| 13 | 02 - Fraud Agent - 06 - Fraud Address Surge Agent | 3–10 min | Space **Fraud Address Surge Agent** | New address + expedite / surge. |
-| 14 | 02 - Fraud Agent - 07 - Fraud Promo Agent | 3–10 min | Space **Fraud Promo Agent** | Promo and discount abuse. |
-| 15 | 02 - Fraud Agent - 08 - Fraud Inventory Agent | 3–10 min | Space **Fraud Inventory Agent** | Orders vs stock mismatch. |
-| 16 | 02 - Fraud Agent - 09 - Fraud Cancel Agent | 3–10 min | Space **Fraud Cancel Agent** | Cancel / abort shipment. |
-| 17 | 02 - Fraud Agent - 10 - Fraud Geo Agent | 3–10 min | Space **Fraud Geo Agent** | Default system prompt is the Case 15 notes. **system_prompt** overrides it. Five starter-question checkboxes ask those prompts. **additional_prompt** is comma-separated customer ids. |
-| 18 | 01 - Setup - Step 08 - Destroy Databricks stack | 10–20 min | Workspace gone from account console; cleanup email | Type `DELETE`. Deletes `mcp-ecommerce-oltp`, catalog, warehouse, workspace. Cancels the 3-hour timer. Account list: `https://accounts.cloud.databricks.com/?account_id={ACCOUNT_ID}`. |
+| 4 | 01 - Setup - Step 04 - Publish Discover domains | 1–3 min | Discover cards for Sales, Customer, Supply Chain, Finance are **Published** | [Domain API](https://docs.databricks.com/api/domains/v1/domain) `POST/PATCH /api/discover/v1/domains`. Needs **MANAGE DISCOVERY** (workspace admin). Then `https://{WORKSPACE_HOST}/search/discover`. Pages are created when that API accepts the payload. |
+| 5 | 01 - Setup - Step 05 - Invoke Retail Analytics Genie | **3 min** | Sample questions return SQL + a short answer | Measured 3 min 14 s. Confirms Genie MCP on the retail space. Optional question input. |
+| 6 | 01 - Setup - Step 06 - Populate next 100000 OLTP rows | 10–40 min | `ingestion_tracker` / `ingestion_log`; row counts on `customer_order` and `customer_transaction` | Catalog `https://{WORKSPACE_HOST}/explore/data/{CATALOG}`. Default 100,000 rows. Repeat until `caught_up`. |
+| 7 | 01 - Setup - Step 07 - Populate next N months of dims and facts | 10–30 min | `fact_sales`, `fact_returns`, `fact_inventory`, `fact_transaction` grow for that window | Same catalog. Months 1–12 (default 3). No error if less OLTP remains. |
+| 8 | 01 - Setup - Step 08 - Pipeline next 100000 OLTP and next N months star | 20–60 min | Step 06 then Step 07 in one run | Use this instead of running 06 and 07 separately. |
+| 9 | 02 - Fraud Agent - 01 - Fraud Velocity Agent | 3–10 min | Space **Fraud Velocity Agent** | Genie MCP for velocity bursts and split orders. |
+| 10 | 02 - Fraud Agent - 02 - Fraud Address Link Agent | 3–10 min | Space **Fraud Address Link Agent** | Shared-address / duplicate-account hops. |
+| 11 | 02 - Fraud Agent - 03 - Fraud Ship-to Bill-to Agent | 3–10 min | Space **Fraud Ship-to Bill-to Agent** | Ship-to ≠ bill-to. |
+| 12 | 02 - Fraud Agent - 04 - Fraud Returns Agent | 3–10 min | Space **Fraud Returns Agent** | High / rapid returns. |
+| 13 | 02 - Fraud Agent - 05 - Fraud First-Order Agent | 3–10 min | Space **Fraud First-Order Agent** | High-value first orders. |
+| 14 | 02 - Fraud Agent - 06 - Fraud Address Surge Agent | 3–10 min | Space **Fraud Address Surge Agent** | New address + expedite / surge. |
+| 15 | 02 - Fraud Agent - 07 - Fraud Promo Agent | 3–10 min | Space **Fraud Promo Agent** | Promo and discount abuse. |
+| 16 | 02 - Fraud Agent - 08 - Fraud Inventory Agent | 3–10 min | Space **Fraud Inventory Agent** | Orders vs stock mismatch. |
+| 17 | 02 - Fraud Agent - 09 - Fraud Cancel Agent | 3–10 min | Space **Fraud Cancel Agent** | Cancel / abort shipment. |
+| 18 | 02 - Fraud Agent - 10 - Fraud Geo Agent | 3–10 min | Space **Fraud Geo Agent** | Default system prompt is the Case 15 notes. **system_prompt** overrides it. Five starter-question checkboxes ask those prompts. **additional_prompt** is comma-separated customer ids. |
+| 19 | 01 - Setup - Step 09 - Destroy Databricks stack | 10–20 min | Workspace gone from account console; cleanup email | Type `DELETE`. Deletes `mcp-ecommerce-oltp`, catalog, warehouse, workspace. Cancels the 3-hour timer. Account list: `https://accounts.cloud.databricks.com/?account_id={ACCOUNT_ID}`. |
 
-Historical generate / realtime CDC Actions are retired (`z_retired_*`). Use Step 05 + 06 (or 07) for data.
+Historical generate / realtime CDC Actions are retired (`z_retired_*`). Use Step 06 + 07 (or 08) for data.
 
 ### Screenshots
 
@@ -348,12 +350,13 @@ Use **Actions → Run workflow**. Create starts a 3-hour timer; a later Create c
 1. **01 - Setup - Step 01 - Create Databricks stack** — workspace, SQL warehouse, catalog, deploy jobs
 2. **01 - Setup - Step 02 - Create all Genie agents** — Retail Analytics + 10 fraud specialists
 3. **01 - Setup - Step 03 - Publish ecommerce-oltp MCP App** — Databricks App `mcp-ecommerce-oltp` for LangGraph / ADK / Playground
-4. **01 - Setup - Step 04 - Invoke Retail Analytics Genie**
-5. **01 - Setup - Step 05 - Populate next 100000 OLTP rows**
-6. **01 - Setup - Step 06 - Populate next N months of dims and facts**
-7. **01 - Setup - Step 07 - Pipeline next 100000 OLTP and next N months star**
-8. **01 - Setup - Step 08 - Destroy Databricks stack**
-9. **01 - Setup - Step 09 - Destroy Databricks stack in 3 hours**
+4. **01 - Setup - Step 04 - Publish Discover domains** — Sales, Customer, Supply Chain, Finance via `/api/discover/v1/domains`
+5. **01 - Setup - Step 05 - Invoke Retail Analytics Genie**
+6. **01 - Setup - Step 06 - Populate next 100000 OLTP rows**
+7. **01 - Setup - Step 07 - Populate next N months of dims and facts**
+8. **01 - Setup - Step 08 - Pipeline next 100000 OLTP and next N months star**
+9. **01 - Setup - Step 09 - Destroy Databricks stack**
+10. **01 - Setup - Step 10 - Destroy Databricks stack in 3 hours**
 
 **02 - Fraud Agent** (each Action creates that specialist’s Genie space; Databricks hosts Genie MCP at `/api/2.0/mcp/genie/{space_id}`)
 
@@ -395,6 +398,7 @@ Optional if you skip **Actions → Run workflow**. Same Databricks APIs; you run
 uv run genie-ontology run provision
 uv run genie-ontology run create_agents
 uv run genie-ontology run publish_mcp
+uv run genie-ontology run publish_domains
 uv run genie-ontology run invoke_agents
 ```
 
@@ -643,6 +647,9 @@ uv run genie-ontology run invoke_agents --as-job
 `deploy` uploads this package plus thin wrapper notebooks to
 `DATABRICKS_WORKSPACE_PATH` and creates or updates the jobs (Genie provision plus OLTP/CDC Spark jobs).
 
-Pages still have no documented public create API. Provision stores the same
-content as `05_pages_content.py` in `<catalog>.<schema>._ontology_pages` and
-tries the Discover endpoints; publish in the UI if those APIs are unavailable.
+Discover **domains** use the public [Domain API](https://docs.databricks.com/api/domains/v1/domain)
+(`POST /api/discover/v1/domains`, then `PATCH` `draft=false` to publish).
+Step 04 and provision `t04` create Sales, Customer, Supply Chain, and Finance
+from the existing governed tags. Pages still have no documented public create
+API. Provision stores the same content in `<catalog>.<schema>._ontology_pages`
+and Step 04 retries Discover page endpoints after the parent domain exists.

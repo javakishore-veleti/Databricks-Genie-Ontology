@@ -109,6 +109,32 @@ class WorkflowOrchestrator:
         print("Playground / Supervisor lists this app because the name starts with mcp-.")
         print("Classic Genie spaces still use /api/2.0/mcp/genie/{SPACE_ID} only.")
 
+    def publish_domains(self) -> None:
+        from ecommerce_genie_ontology.common.constants import DISCOVER_DOMAINS, DOMAIN_NAMES, PAGES
+
+        gov = self._factory.adapter_factory().governance_facade()
+        gov.ensure_domain_tag_policies(DOMAIN_NAMES)
+        published = gov.ensure_discover_domains(DISCOVER_DOMAINS)
+        if not published:
+            raise SystemExit("Discover Domain API did not create or update Sales/Customer/Supply Chain/Finance.")
+        drafts = [str(item.get("tag_key") or "") for item in published if item.get("effective_draft")]
+        by_tag = {str(item.get("tag_key") or ""): item for item in published}
+        for page in PAGES:
+            domain = by_tag.get(str(page["domain"]), {})
+            payload = dict(page)
+            if domain.get("domain_id"):
+                payload["domain_id"] = domain["domain_id"]
+            if domain.get("name"):
+                payload["domain_name"] = domain["name"]
+            if not gov.try_create_page(payload):
+                print(
+                    f"NOTE  Page '{page['name']}' stays in retail_star._ontology_pages "
+                    "until a Pages API accepts the payload."
+                )
+        if drafts:
+            raise SystemExit(f"Domains exist but are still draft: {', '.join(name for name in drafts if name)}")
+        print("Done. Discover domains are published. Refresh /search/discover.")
+
     def truncate(self, ctx: TcCtx) -> None:
         self._factory.tc_facade().truncate(ctx)
 

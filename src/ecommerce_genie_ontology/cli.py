@@ -109,6 +109,9 @@ class CliApp:
         if args.workflow == "publish_mcp":
             self._runner.publish_mcp()
             return 0
+        if args.workflow == "publish_domains":
+            self._runner.publish_domains()
+            return 0
         if args.workflow == "truncate":
             ctx = TcCtx(
                 TcReq(catalog=args.catalog, confirm=args.confirm),
@@ -219,6 +222,7 @@ class CliApp:
                 "provision",
                 "create_agents",
                 "publish_mcp",
+                "publish_domains",
                 "invoke_agents",
                 "cleanup",
                 "truncate",

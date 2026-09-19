@@ -1,25 +1,19 @@
-name: 01 - Setup - Step 05 - Invoke Retail Analytics Genie
+name: 01 - Setup - Step 04 - Publish Discover domains
 
 on:
   workflow_dispatch:
-    inputs:
-      question:
-        description: One question for Retail Analytics Genie. Leave empty to run the sample set.
-        required: false
-        default: ""
-        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: databricks-invoke-agents
+  group: databricks-publish-domains
   cancel-in-progress: false
 
 jobs:
-  invoke-agents:
+  publish-domains:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     env:
       DATABRICKS_ACCOUNT_ID: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
       DATABRICKS_ACCOUNT_HOST: ${{ secrets.DATABRICKS_ACCOUNT_HOST }}
@@ -39,5 +33,5 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Databricks env
         uses: ./.github/actions/setup-databricks
-      - name: Ask Genie
-        run: uv run genie-ontology run invoke_agents --question "${{ inputs.question }}"
+      - name: Create and publish Sales Customer Supply Chain Finance
+        run: uv run genie-ontology run publish_domains
