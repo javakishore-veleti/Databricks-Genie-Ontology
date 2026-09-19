@@ -541,7 +541,7 @@ Open a space → **Configure**. Same mapping for every fraud specialist
 | Configure tab | Who writes it | Which GitHub Action | Code |
 |---|---|---|---|
 | **About** title + description | This repo | **Step 02** or that space’s **02 - Fraud Agent - NN** | `FRAUD_AGENTS` / `AGENT_TITLE` + `AGENT_DESCRIPTION` |
-| **About → Common questions** | This repo | same | Geo: `sample_questions` in `fraud_agents.py`. Others: `Run fraud case {id} {name}`. Retail: `SAMPLE_QUESTIONS` |
+| **About → Common questions** | This repo | same | Plain English in `fraud_agents.py` `sample_questions`. Retail: `SAMPLE_QUESTIONS`. No 01–15 labels on Genie. |
 | **About → Warehouse** | This repo | **01 - Setup - Step 01 - Create Databricks stack** (name); Step 02 attaches it | warehouse `ecommerce-genie-ontology` |
 | **About → Agent ID** | Databricks | none (assigned at create) | `_genie_agent_registry.space_id` |
 | **Sources** | This repo | **Step 02** or **02 - Fraud Agent - NN** | Fraud: `SHARED_TABLES` (`retail_oltp` + `retail_star`). **Not** on any Genie space: `analytics_log`, `analytics_log_customer`, `ingestion_tracker`, `ingestion_log` (MCP / Spark only). Retail: metric views `mv_*` only |
@@ -551,12 +551,14 @@ Open a space → **Configure**. Same mapping for every fraud specialist
 The prompt used in this workspace for Fraud Geo is:
 
 ```text
-Run fraud case 15 Impossible geo two regions one hour
+Which customers had orders shipped to two different regions within one hour?
 ```
 
 That is the first sample question on the space and the first checkbox on
 **02 - Fraud Agent - 10 - Fraud Geo Agent**. Type it in the chat (or check
-the box on that GitHub Action). Do not start from Retail Analytics for Case 15.
+the box on that GitHub Action). Do not start from Retail Analytics for this
+question. MCP `run_fraud_case` still uses ids 01–15; those ids are not sent
+to Genie.
 
 ### Fraud Geo Agent
 
@@ -604,7 +606,8 @@ tables are empty after Step 06 + 07 (or Step 100).
 #### What happened on this agent (simple)
 
 You opened **Fraud Geo Agent** and typed
-`Run fraud case 15 Impossible geo two regions one hour`.
+`Which customers had orders shipped to two different regions within one hour?`
+(or the older wording `Run fraud case 15 Impossible geo two regions one hour`).
 
 1. **We already taught the space** (GitHub Actions, not the chat):
    - **Step 01** created the tables and wrote comments + primary/foreign
@@ -640,11 +643,11 @@ no rows. After Step 100 + data, the same prompt returns these 20 pairs.
 
 | Kind | Text |
 |---|---|
-| **Use this (Case 15)** | `Run fraud case 15 Impossible geo two regions one hour` |
+| **Use this** | `Which customers had orders shipped to two different regions within one hour?` |
 | Starter (schema smoke) | `Monthly time series aggregation of order_amount from customer_order table` |
 | Starter (schema smoke) | `Distribution of segment in the customer table` |
 | Starter (schema smoke) | `What tables are there and how are they connected? Give me a short summary.` |
-| GHA extra | `Run fraud case 15 Impossible geo two regions one hour for customer ids: {ids}` (`additional_prompt`) |
+| GHA extra | same question plus `for customer ids: {ids}` (`additional_prompt`) |
 
 **Context we provide** (what Genie sees before the LLM writes SQL):
 
@@ -701,7 +704,7 @@ SQL does **not** run inside the LLM. Genie is a Databricks service: the
 model writes SQL, the **space’s SQL warehouse** runs it, then Genie hands
 the rows back so the model can write the English answer.
 
-**One turn** after you paste `Run fraud case 15 Impossible geo two regions one hour`:
+**One turn** after you paste the Geo prompt above:
 
 1. **FETCHING_METADATA** — pull comments and PK/FK for the attached
    `retail_oltp` / `retail_star` tables.

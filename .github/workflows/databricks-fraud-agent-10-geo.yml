@@ -14,7 +14,7 @@ on:
         default: ""
         type: string
       ask_case_15:
-        description: "Ask — Run fraud case 15 Impossible geo two regions one hour"
+        description: "Ask — Which customers had orders shipped to two different regions within one hour?"
         type: boolean
         default: false
       ask_order_amount_timeseries:
@@ -82,7 +82,7 @@ jobs:
             uv run genie-ontology run invoke_agents --agent-id geo --question "$1"
           }
           if [ "$ASK_CASE_15" = "true" ]; then
-            ask "Run fraud case 15 Impossible geo two regions one hour"
+            ask "Which customers had orders shipped to two different regions within one hour?"
           fi
           if [ "$ASK_ORDER_AMOUNT_TIMESERIES" = "true" ]; then
             ask "Monthly time series aggregation of order_amount from customer_order table"
@@ -94,5 +94,5 @@ jobs:
             ask "What tables are there and how are they connected? Give me a short summary."
           fi
           if [ -n "$ADDITIONAL_PROMPT" ]; then
-            ask "Run fraud case 15 Impossible geo two regions one hour for customer ids: ${ADDITIONAL_PROMPT}"
+            ask "Which customers had orders shipped to two different regions within one hour for customer ids: ${ADDITIONAL_PROMPT}"
           fi

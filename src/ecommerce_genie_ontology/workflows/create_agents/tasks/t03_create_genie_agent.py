@@ -7,7 +7,7 @@ from ecommerce_genie_ontology.common.constants import (
     AGENT_INSTRUCTIONS,
     SAMPLE_QUESTIONS,
 )
-from ecommerce_genie_ontology.common.constants.fraud_agents import FRAUD_AGENTS, SHARED_TABLES, case_names
+from ecommerce_genie_ontology.common.constants.fraud_agents import FRAUD_AGENTS, SHARED_TABLES
 from ecommerce_genie_ontology.common.interfaces.create_agents import CreateAgentsWorkspaceFacade
 from ecommerce_genie_ontology.common.utils.ids import hex32
 
@@ -124,13 +124,7 @@ def serialized_fraud_space(
         identifier = f"{oltp}.{name}" if kind == "oltp" else f"{star}.{name}"
         tables.append({"identifier": identifier, "description": [description]})
     tables.sort(key=lambda item: item["identifier"])
-    names = case_names(agent["case_ids"])  # type: ignore[arg-type]
-    custom_questions = agent.get("sample_questions")
-    questions = (
-        list(custom_questions)
-        if custom_questions
-        else [f"Run fraud case {name}" for name in names]
-    )
+    questions = list(agent.get("sample_questions") or (f"What should {agent['title']} look for?",))
     sample_questions = sorted(
         ({"id": hex32(f"fraud-sample:{agent['id']}:{q}"), "question": [q]} for q in questions),
         key=lambda item: item["id"],
@@ -138,10 +132,8 @@ def serialized_fraud_space(
     override = str(system_prompt or "").strip()
     extra = str(agent.get("instructions") or "").strip()
     instructions = override or extra or (
-        f"You are {agent['title']}. Investigate only: {', '.join(names)}. "
-        "Use OLTP tables and star dims/facts. Return small aggregations (LIMIT 50). "
-        "Never dump full tables. If tables are empty, report zero rows and stop. "
-        "Do not invent next steps or load-data instructions."
+        f"You are {agent['title']}. Answer from the attached tables. "
+        "Return at most 50 rows. Never dump a full table."
     )
     payload = {
         "version": 2,
