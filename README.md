@@ -44,7 +44,9 @@ and its AI Agents.
 
 ## Running Agentic Fraud Analytics - Start To Finish
 
-Use **Actions → Run workflow**. **Time** is the last measured GitHub Actions duration (cold warehouse / cluster). Look at the GitHub run first, then the Databricks account and workspace pages.
+Use **Actions → Run workflow**. **Time** is the last measured GitHub Actions
+job duration (19 Sep 2026 Step 100 unless noted). Look at the GitHub run
+first, then the Databricks account and workspace pages.
 
 Template URLs only — replace the `{placeholders}`:
 
@@ -62,15 +64,15 @@ Fresh start: run **01 - Setup - Step 100 - Create All Together**. It chains 01 �
 
 | S. No | GitHub workflow name | Time | What to look at | Comments |
 |---|---|---|---|---|
-| 0 | 01 - Setup - Step 100 - Create All Together | 40–90 min | Same checks as Steps 01, 02, 03, 04, 06, 07 | One **Run workflow**. Skips Step 05 (optional Genie smoke) and Step 08 (06+07 already). `row_count` and `months` pass through. Add a new atomic step later, then add one `needs:` job here. |
-| 1 | 01 - Setup - Step 01 - Create Databricks stack | **5 min** | GitHub job green; workspace **RUNNING**; SQL warehouse up; catalog empty tables | Measured 4 min 50 s. Workspace 38 s, warehouse 20 s, catalog 2 min 43 s, deploy jobs 54 s. Account page `https://accounts.cloud.databricks.com/workspaces/{WORKSPACE_ID}?account_id={ACCOUNT_ID}`. Then open `https://{WORKSPACE_HOST}`. Starts the 3-hour destroy timer. Does **not** create Genie spaces. |
-| 2 | 01 - Setup - Step 02 - Create all Genie agents | **2 min** | 11 Genie spaces (Retail Analytics + 10 fraud specialists) | Measured 1 min 37 s. Genie `https://{WORKSPACE_HOST}/genie`. Rerun this if agents fail; do not rerun Step 01. Each space MCP: `https://{WORKSPACE_HOST}/api/2.0/mcp/genie/{SPACE_ID}`. |
-| 3 | 01 - Setup - Step 03 - Publish ecommerce-oltp MCP App | 10–20 min | App **mcp-ecommerce-oltp** on Apps | `https://{WORKSPACE_HOST}/apps`. MCP `{APP_URL}/mcp`. Playground / Supervisor list `mcp-*` apps. Classic Genie still uses Genie MCP only. |
-| 4 | 01 - Setup - Step 04 - Publish Discover domains | 1–3 min | Discover cards for Sales, Customer, Supply Chain, Finance are **Published** | [Domain API](https://docs.databricks.com/api/domains/v1/domain) `POST/PATCH /api/discover/v1/domains`. Needs **MANAGE DISCOVERY** (workspace admin). Then `https://{WORKSPACE_HOST}/search/discover`. Pages are created when that API accepts the payload. |
-| 5 | 01 - Setup - Step 05 - Invoke Retail Analytics Genie | **3 min** | Sample questions return SQL + a short answer | Measured 3 min 14 s. Confirms Genie MCP on the retail space. Optional question input. |
-| 6 | 01 - Setup - Step 06 - Populate next 100000 OLTP rows | 10–40 min | `ingestion_tracker` / `ingestion_log`; row counts on `customer_order` and `customer_transaction` | Catalog `https://{WORKSPACE_HOST}/explore/data/{CATALOG}`. Default 100,000 rows. Repeat until `caught_up`. |
-| 7 | 01 - Setup - Step 07 - Populate next N months of dims and facts | 10–30 min | `fact_order_event` plus STALE `fact_sales` / `fact_inventory` | Same catalog. Months 1–12 (default 3). Fraud reads `fact_order_event`. |
-| 8 | 01 - Setup - Step 08 - Pipeline next 100000 OLTP and next N months star | 20–60 min | Step 06 then Step 07 in one run | Use this instead of running 06 and 07 separately. |
+| 0 | 01 - Setup - Step 100 - Create All Together | **16 min** | Same checks as Steps 01, 02, 03, 04, 06, 07 | Measured **15 min 51 s** (19 Sep 2026, run 35472667395). Wall clock 01+02+03+04+06+07. One **Run workflow**. Skips Step 05 and Step 08. `row_count` and `months` pass through. |
+| 1 | 01 - Setup - Step 01 - Create Databricks stack | **5 min** | GitHub job green; workspace **RUNNING**; SQL warehouse up; catalog empty tables | Measured **4 min 53 s** (same Step 100). Workspace 42 s, warehouse 18 s, catalog 3 min 3 s, deploy jobs 42 s. Account page `https://accounts.cloud.databricks.com/workspaces/{WORKSPACE_ID}?account_id={ACCOUNT_ID}`. Then open `https://{WORKSPACE_HOST}`. Starts the 3-hour destroy timer. Does **not** create Genie spaces. |
+| 2 | 01 - Setup - Step 02 - Create all Genie agents | **1 min** | 11 Genie spaces (Retail Analytics + 10 fraud specialists) | Measured **1 min 4 s**. Genie `https://{WORKSPACE_HOST}/genie`. Rerun this if agents fail; do not rerun Step 01. Each space MCP: `https://{WORKSPACE_HOST}/api/2.0/mcp/genie/{SPACE_ID}`. |
+| 3 | 01 - Setup - Step 03 - Publish ecommerce-oltp MCP App | **4 min** | App **mcp-ecommerce-oltp** on Apps | Measured **3 min 30 s**. `https://{WORKSPACE_HOST}/apps`. MCP `{APP_URL}/mcp`. Playground / Supervisor list `mcp-*` apps. Classic Genie still uses Genie MCP only. |
+| 4 | 01 - Setup - Step 04 - Publish Discover domains | **20 s** | Discover cards for Sales, Customer, Supply Chain, Finance are **Published** | Measured **20 s**. [Domain API](https://docs.databricks.com/api/domains/v1/domain) `POST/PATCH /api/discover/v1/domains`. Needs **MANAGE DISCOVERY**. Then `https://{WORKSPACE_HOST}/search/discover`. Pages SKIP until that API accepts the payload. |
+| 5 | 01 - Setup - Step 05 - Invoke Retail Analytics Genie | **3 min** | Sample questions return SQL + a short answer | Measured **3 min 14 s** (not in Step 100). Confirms Genie MCP on the retail space. Optional question input. |
+| 6 | 01 - Setup - Step 06 - Populate next 100000 OLTP rows | **3 min** | `ingestion_tracker` / `ingestion_log`; row counts on `customer_order` and `customer_transaction` | Measured **2 min 34 s** for 100,000 rows on a warm cluster. Catalog `https://{WORKSPACE_HOST}/explore/data/{CATALOG}`. Repeat until `caught_up`. |
+| 7 | 01 - Setup - Step 07 - Populate next N months of dims and facts | **3 min** | `fact_order_event` plus STALE `fact_sales` / `fact_inventory` | Measured **3 min 10 s** for 3 months. Same catalog. Months 1–12 (default 3). Fraud reads `fact_order_event`. |
+| 8 | 01 - Setup - Step 08 - Pipeline next 100000 OLTP and next N months star | **6 min** | Step 06 then Step 07 in one run | Last measured pieces: 2 min 34 s + 3 min 10 s. Use this instead of running 06 and 07 separately. |
 | 9 | 02 - Fraud Agent - 01 - Fraud Velocity Agent | 3–10 min | Space **Fraud Velocity Agent** | Genie MCP for velocity bursts and split orders. |
 | 10 | 02 - Fraud Agent - 02 - Fraud Address Link Agent | 3–10 min | Space **Fraud Address Link Agent** | Shared-address / duplicate-account hops. |
 | 11 | 02 - Fraud Agent - 03 - Fraud Ship-to Bill-to Agent | 3–10 min | Space **Fraud Ship-to Bill-to Agent** | Ship-to ≠ bill-to. |
@@ -81,7 +83,7 @@ Fresh start: run **01 - Setup - Step 100 - Create All Together**. It chains 01 �
 | 16 | 02 - Fraud Agent - 08 - Fraud Inventory Agent | 3–10 min | Space **Fraud Inventory Agent** | Orders vs stock mismatch. |
 | 17 | 02 - Fraud Agent - 09 - Fraud Cancel Agent | 3–10 min | Space **Fraud Cancel Agent** | Cancel / abort shipment. |
 | 18 | 02 - Fraud Agent - 10 - Fraud Geo Agent | 3–10 min | Space **Fraud Geo Agent** | Default system prompt is the Case 15 notes. **system_prompt** overrides it. Five starter-question checkboxes ask those prompts. **additional_prompt** is comma-separated customer ids. |
-| 19 | 01 - Setup - Step 09 - Destroy Databricks stack | 10–20 min | Workspace gone from account console; cleanup email | Type `DELETE`. Deletes `mcp-ecommerce-oltp`, catalog, warehouse, workspace. Cancels the 3-hour timer. Account list: `https://accounts.cloud.databricks.com/?account_id={ACCOUNT_ID}`. |
+| 19 | 01 - Setup - Step 09 - Destroy Databricks stack | **1 min** | Workspace gone from account console; cleanup email | Measured **1 min 7 s** (19 Sep 2026, run 35472183222). Type `DELETE`. Deletes `mcp-ecommerce-oltp`, catalog, warehouse, workspace. Cancels the 3-hour timer. Account list: `https://accounts.cloud.databricks.com/?account_id={ACCOUNT_ID}`. |
 
 Historical generate / realtime CDC Actions are retired (`z_retired_*`). Use Step 100 for a full recreate, or Step 06 + 07 (or 08) for data only.
 
