@@ -4,15 +4,35 @@ on:
   workflow_dispatch:
     inputs:
       system_prompt:
-        description: Override the Fraud Geo Agent system prompt. Leave empty to keep the default Case 15 notes (detect, required data, next steps).
+        description: Override the Fraud Geo Agent system prompt. Leave empty to keep the default Case 15 notes.
         required: false
         default: ""
         type: string
       additional_prompt:
-        description: User additional prompt — comma-separated customer ids to ask this agent about. Leave empty to skip the ask.
+        description: Extra user prompt — comma-separated customer ids. Asked after any checked starter questions.
         required: false
         default: ""
         type: string
+      ask_case_15:
+        description: "Ask — Run fraud case 15 Impossible geo two regions one hour"
+        type: boolean
+        default: false
+      ask_order_amount_timeseries:
+        description: "Ask — Monthly time series aggregation of order_amount from customer_order table"
+        type: boolean
+        default: false
+      ask_customer_segment:
+        description: "Ask — Distribution of segment in the customer table"
+        type: boolean
+        default: false
+      ask_tables_summary:
+        description: "Ask — What tables are there and how are they connected? Give me a short summary."
+        type: boolean
+        default: false
+      ask_analytics_log_customers:
+        description: "Ask — Distribution of customer_id count in the analytics_log table"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -28,7 +48,13 @@ jobs:
 
   ask:
     needs: create
-    if: inputs.additional_prompt != ''
+    if: >
+      inputs.ask_case_15
+      || inputs.ask_order_amount_timeseries
+      || inputs.ask_customer_segment
+      || inputs.ask_tables_summary
+      || inputs.ask_analytics_log_customers
+      || inputs.additional_prompt != ''
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -46,13 +72,36 @@ jobs:
       DATABRICKS_SCHEMA: ${{ secrets.DATABRICKS_SCHEMA }}
       DATABRICKS_OLTP_SCHEMA: ${{ secrets.DATABRICKS_OLTP_SCHEMA }}
       ADDITIONAL_PROMPT: ${{ inputs.additional_prompt }}
+      ASK_CASE_15: ${{ inputs.ask_case_15 }}
+      ASK_ORDER_AMOUNT_TIMESERIES: ${{ inputs.ask_order_amount_timeseries }}
+      ASK_CUSTOMER_SEGMENT: ${{ inputs.ask_customer_segment }}
+      ASK_TABLES_SUMMARY: ${{ inputs.ask_tables_summary }}
+      ASK_ANALYTICS_LOG_CUSTOMERS: ${{ inputs.ask_analytics_log_customers }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Databricks env
         uses: ./.github/actions/setup-databricks
-      - name: Ask Fraud Geo Agent about customer ids
-        run: >
-          uv run genie-ontology run invoke_agents
-          --agent-id geo
-          --question "Run fraud case 15 Impossible geo two regions one hour for customer ids: ${ADDITIONAL_PROMPT}"
+      - name: Ask checked starter questions
+        run: |
+          ask() {
+            uv run genie-ontology run invoke_agents --agent-id geo --question "$1"
+          }
+          if [ "$ASK_CASE_15" = "true" ]; then
+            ask "Run fraud case 15 Impossible geo two regions one hour"
+          fi
+          if [ "$ASK_ORDER_AMOUNT_TIMESERIES" = "true" ]; then
+            ask "Monthly time series aggregation of order_amount from customer_order table"
+          fi
+          if [ "$ASK_CUSTOMER_SEGMENT" = "true" ]; then
+            ask "Distribution of segment in the customer table"
+          fi
+          if [ "$ASK_TABLES_SUMMARY" = "true" ]; then
+            ask "What tables are there and how are they connected? Give me a short summary."
+          fi
+          if [ "$ASK_ANALYTICS_LOG_CUSTOMERS" = "true" ]; then
+            ask "Distribution of customer_id count in the analytics_log table"
+          fi
+          if [ -n "$ADDITIONAL_PROMPT" ]; then
+            ask "Run fraud case 15 Impossible geo two regions one hour for customer ids: ${ADDITIONAL_PROMPT}"
+          fi

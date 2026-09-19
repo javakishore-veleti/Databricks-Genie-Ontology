@@ -118,9 +118,10 @@ FRAUD_AGENTS: tuple[dict[str, object], ...] = (
         ),
         "sample_questions": (
             "Run fraud case 15 Impossible geo two regions one hour",
-            "Which customers have transactions in two regions within one hour?",
-            "Which region pairs appear in impossible-geo activity?",
-            "Which customers repeat impossible-geo more than once?",
+            "Monthly time series aggregation of order_amount from customer_order table",
+            "Distribution of segment in the customer table",
+            "What tables are there and how are they connected? Give me a short summary.",
+            "Distribution of customer_id count in the analytics_log table",
         ),
     },
 )

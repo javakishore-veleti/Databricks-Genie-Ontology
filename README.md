@@ -70,7 +70,7 @@ Template URLs only — replace the `{placeholders}`:
 | 14 | 02 - Fraud Agent - 07 - Fraud Promo Agent | 3–10 min | Space **Fraud Promo Agent** | Promo and discount abuse. |
 | 15 | 02 - Fraud Agent - 08 - Fraud Inventory Agent | 3–10 min | Space **Fraud Inventory Agent** | Orders vs stock mismatch. |
 | 16 | 02 - Fraud Agent - 09 - Fraud Cancel Agent | 3–10 min | Space **Fraud Cancel Agent** | Cancel / abort shipment. |
-| 17 | 02 - Fraud Agent - 10 - Fraud Geo Agent | 3–10 min | Space **Fraud Geo Agent** | Default system prompt is the Case 15 notes (detect, required data, next steps). Action input **system_prompt** overrides it when filled. Action input **additional_prompt** is comma-separated customer ids to ask this agent. |
+| 17 | 02 - Fraud Agent - 10 - Fraud Geo Agent | 3–10 min | Space **Fraud Geo Agent** | Default system prompt is the Case 15 notes. **system_prompt** overrides it. Five starter-question checkboxes ask those prompts. **additional_prompt** is comma-separated customer ids. |
 | 18 | 01 - Setup - Step 14 - Destroy Databricks stack | 10–20 min | Workspace gone from account console; cleanup email | Type `DELETE`. Deletes `mcp-ecommerce-oltp`, catalog, warehouse, workspace. Cancels the 3-hour timer. Account list: `https://accounts.cloud.databricks.com/?account_id={ACCOUNT_ID}`. |
 
 Optional lab path (not required for the 100k loop): Step 08 Historical, Step 09 ETL Historical, or Step 12 pipeline; realtime CDC is Step 10 + 11 or Step 13.
