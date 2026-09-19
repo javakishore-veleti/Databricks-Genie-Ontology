@@ -12,6 +12,8 @@ from ecommerce_genie_ontology.mcp import tools as mcp_tools
 
 try:
     from mcp.server.mcpserver import MCPServer
+    from starlette.requests import Request
+    from starlette.responses import HTMLResponse, JSONResponse
 except ImportError as exc:  # pragma: no cover
     raise SystemExit("Install the MCP extra: uv sync --extra mcp") from exc
 
@@ -45,6 +47,33 @@ mcp.tool()(mcp_tools.generate_next_oltp)
 mcp.tool()(mcp_tools.etl_next_months)
 mcp.tool()(mcp_tools.etl_star_cdc)
 mcp.tool()(mcp_tools.query_dataset)
+
+
+def _health() -> dict[str, str]:
+    return {
+        "status": "ok",
+        "service": "mcp-ecommerce-oltp",
+        "mcp": "/mcp",
+    }
+
+
+@mcp.custom_route("/", methods=["GET"])
+async def root(_request: Request) -> HTMLResponse:
+    body = _health()
+    return HTMLResponse(
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<title>mcp-ecommerce-oltp</title></head><body>"
+        "<h1>mcp-ecommerce-oltp</h1>"
+        f"<p>status: {body['status']}</p>"
+        "<p>MCP tools: <code>/mcp</code> (Playground / Supervisor, not a browser page)</p>"
+        "<p>Health: <code>/health</code></p>"
+        "</body></html>"
+    )
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health(_request: Request) -> JSONResponse:
+    return JSONResponse(_health())
 
 
 def main(argv: list[str] | None = None) -> None:
