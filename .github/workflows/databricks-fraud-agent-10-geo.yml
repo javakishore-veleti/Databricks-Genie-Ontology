@@ -2,6 +2,12 @@ name: 02 - Fraud Agent - 10 - Fraud Geo Agent
 
 on:
   workflow_dispatch:
+    inputs:
+      system_prompt:
+        description: Override Fraud Geo Agent system prompt. Empty keeps detect + required-data notes (no next steps).
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -12,4 +18,5 @@ jobs:
     with:
       agent_id: geo
       agent_title: Fraud Geo Agent
+      system_prompt: ${{ inputs.system_prompt }}
     secrets: inherit

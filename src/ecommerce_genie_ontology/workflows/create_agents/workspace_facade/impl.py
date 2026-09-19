@@ -64,6 +64,10 @@ class CreateAgentsWorkspaceFacadeImpl:
     def agent_id(self) -> str:
         return self._session.context.agent_id
 
+    @property
+    def system_prompt(self) -> str:
+        return self._session.context.system_prompt
+
     def sql(self, statement: str) -> Any:
         return self._sql.execute(statement)
 

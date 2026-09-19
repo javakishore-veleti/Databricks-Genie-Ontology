@@ -155,6 +155,7 @@ class JobsDao:
             JobParameterDefinition(name="row_count", default="100000"),
             JobParameterDefinition(name="months", default="3"),
             JobParameterDefinition(name="agent_id", default=""),
+            JobParameterDefinition(name="system_prompt", default=""),
         ]
 
     @staticmethod
@@ -177,6 +178,7 @@ class JobsDao:
             "row_count": "{{job.parameters.row_count}}",
             "months": "{{job.parameters.months}}",
             "agent_id": "{{job.parameters.agent_id}}",
+            "system_prompt": "{{job.parameters.system_prompt}}",
         }
         if extra:
             params.update(extra)
@@ -203,6 +205,7 @@ dbutils.widgets.text("year_window", "latest", "latest | last_2 | last_3 | all")
 dbutils.widgets.text("row_count", "100000", "Next OLTP row batch")
 dbutils.widgets.text("months", "3", "Next star months 1-12")
 dbutils.widgets.text("agent_id", "", "One fraud agent id, or empty for all")
+dbutils.widgets.text("system_prompt", "", "Override Genie specialist system prompt")
 
 # COMMAND ----------
 

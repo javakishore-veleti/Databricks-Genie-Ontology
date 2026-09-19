@@ -110,22 +110,32 @@ def serialized_space(fq: str) -> str:
     return json.dumps(payload, separators=(",", ":"))
 
 
-def serialized_fraud_space(star: str, oltp: str, agent: dict) -> str:
+def serialized_fraud_space(
+    star: str, oltp: str, agent: dict, system_prompt: str = ""
+) -> str:
     tables = []
     for name, kind, description in SHARED_TABLES:
         identifier = f"{oltp}.{name}" if kind == "oltp" else f"{star}.{name}"
         tables.append({"identifier": identifier, "description": [description]})
     tables.sort(key=lambda item: item["identifier"])
     names = case_names(agent["case_ids"])  # type: ignore[arg-type]
-    questions = [f"Run fraud case {name}" for name in names]
+    custom_questions = agent.get("sample_questions")
+    questions = (
+        list(custom_questions)
+        if custom_questions
+        else [f"Run fraud case {name}" for name in names]
+    )
     sample_questions = sorted(
         ({"id": hex32(f"fraud-sample:{agent['id']}:{q}"), "question": [q]} for q in questions),
         key=lambda item: item["id"],
     )
-    instructions = (
+    override = str(system_prompt or "").strip()
+    extra = str(agent.get("instructions") or "").strip()
+    instructions = override or extra or (
         f"You are {agent['title']}. Investigate only: {', '.join(names)}. "
         "Use OLTP tables and star dims/facts. Return small aggregations (LIMIT 50). "
-        "Never dump full tables."
+        "Never dump full tables. If tables are empty, report zero rows and stop. "
+        "Do not invent next steps or load-data instructions."
     )
     payload = {
         "version": 2,
@@ -165,7 +175,12 @@ class CreateGenieAgentTask:
                 raise SystemExit(f"Unknown fraud agent {wanted!r}")
         for agent in specialists:
             fraud_id = self._facade.upsert_genie_agent(
-                serialized_fraud_space(self._facade.fq_schema, self._facade.fq_oltp, agent),
+                serialized_fraud_space(
+                    self._facade.fq_schema,
+                    self._facade.fq_oltp,
+                    agent,
+                    str(getattr(self._facade, "system_prompt", "") or ""),
+                ),
                 str(agent["description"]),
                 title=str(agent["title"]),
             )

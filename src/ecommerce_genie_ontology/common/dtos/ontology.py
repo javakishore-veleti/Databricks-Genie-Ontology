@@ -115,6 +115,10 @@ class WfReq(BaseModel):
         default="",
         description="Genie specialist id for create_agents (velocity, address_link, ...). Empty creates all.",
     )
+    system_prompt: str = Field(
+        default="",
+        description="Override Genie specialist system prompt. Empty keeps the agent default notes.",
+    )
 
 
 @dataclass

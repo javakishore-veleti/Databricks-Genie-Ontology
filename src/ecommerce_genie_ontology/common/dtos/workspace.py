@@ -25,6 +25,7 @@ class WorkspaceContext:
     row_count: int = 100_000
     months: int = 3
     agent_id: str = ""
+    system_prompt: str = ""
 
     @property
     def fq_schema(self) -> str:

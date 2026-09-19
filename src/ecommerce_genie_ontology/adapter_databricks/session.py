@@ -130,6 +130,7 @@ class WorkspaceSession:
                 row_count=int(widget("row_count", "100000") or "100000"),
                 months=int(widget("months", "3") or "3"),
                 agent_id=widget("agent_id", ""),
+                system_prompt=widget("system_prompt", ""),
             ),
             workspace=WorkspaceClient(),
             spark=spark,

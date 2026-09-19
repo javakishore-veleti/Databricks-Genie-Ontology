@@ -27,6 +27,10 @@ class WorkflowOrchestrator:
                 self._factory.invoke_agents_workspace_facade().question = ctx.req.question
             if workflow_name == "cleanup":
                 self._factory.cleanup_workspace_facade().confirm = ctx.req.confirm
+            if workflow_name == "create_agents":
+                context = self._factory.adapter_factory().session().context
+                context.agent_id = ctx.req.agent_id
+                context.system_prompt = ctx.req.system_prompt
             workflow.run()
         ctx.resp.workflow = name
         ctx.resp.status = "ok"
@@ -52,6 +56,7 @@ class WorkflowOrchestrator:
             "orders_per_year": str(settings.orders_per_year),
             "year_count": str(settings.year_count),
             "agent_id": ctx.req.agent_id,
+            "system_prompt": ctx.req.system_prompt,
         }
         specs = {spec.workflow_name: spec for spec in self.job_specs()}
         for workflow_name in names:

@@ -86,6 +86,31 @@ FRAUD_AGENTS: tuple[dict[str, object], ...] = (
         "title": "Fraud Geo Agent",
         "case_ids": ("15",),
         "description": "Impossible geography: two regions on the same customer in a short window.",
+        "instructions": (
+            "You are Fraud Geo Agent. Investigate case 15 Impossible geo two regions one hour.\n"
+            "\n"
+            "What this analysis detects:\n"
+            "- Customers with transactions or orders in two regions within one hour "
+            "(possible account compromise from a different location than the account holder).\n"
+            "- Geographic impossibility: travel between those regions is not possible in the elapsed time.\n"
+            "- High-risk region pairs that show up in impossible-geo activity.\n"
+            "- Repeat customers with more than one impossible-geo instance.\n"
+            "\n"
+            "Required data (query these; LIMIT 50; never dump full tables):\n"
+            "- customer_transaction: customer_id, txn_ts\n"
+            "- customer / dim_customer: home region\n"
+            "- customer_order and customer_address: ship and bill regions\n"
+            "- analytics_log_customer: prior per-customer outcomes when present\n"
+            "\n"
+            "If tables are empty, report row counts are zero and stop. "
+            "Do not invent next steps, load-data instructions, or operational advice."
+        ),
+        "sample_questions": (
+            "Run fraud case 15 Impossible geo two regions one hour",
+            "Which customers have transactions in two regions within one hour?",
+            "Which region pairs appear in impossible-geo activity?",
+            "Which customers repeat impossible-geo more than once?",
+        ),
     },
 )
 

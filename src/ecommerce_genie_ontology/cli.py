@@ -183,6 +183,7 @@ class CliApp:
                 confirm=args.confirm,
                 as_job=args.as_job,
                 agent_id=getattr(args, "agent_id", ""),
+                system_prompt=getattr(args, "system_prompt", ""),
             ),
             WfResp(),
         )
@@ -277,6 +278,11 @@ class CliApp:
             "--agent-id",
             default="",
             help="Genie fraud specialist id for create_agents (empty = all)",
+        )
+        run.add_argument(
+            "--system-prompt",
+            default="",
+            help="Override Genie specialist system prompt. Empty keeps the default notes.",
         )
         serve = sub.add_parser("serve", help="Start the FastAPI HTTP interface")
         serve.add_argument("--host", default="127.0.0.1")
