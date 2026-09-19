@@ -10,6 +10,133 @@ Layers depend inward only: **api → workflows → adapter_databricks**, with sh
 contracts in **common**. Databricks can be swapped by adding another adapter that
 implements the same interfaces.
 
+## Business Context
+
+This repository is the **system of record and data product** for sales and
+customer funds movement. We own OLTP (`customer`, `customer_address`,
+`customer_order`, `customer_order_line`, `customer_order_shipment`) plus
+conformed dimensions and facts. Other teams build fraud agents; we publish a
+governed MCP server so those agents stay framework-agnostic.
+
+Target volume to design for: **100,000 customers**, **30,000 transactions per
+customer per year**, **10 years** of history (**300,000 transactions per
+customer**). Dims and facts stay aligned to that OLTP. Transaction types will
+expand beyond retail checkout to funds movement (wire, cash, book transfer,
+CD, brokerage, demand draft, credit card). Agents are **customer-scoped**: MCP
+returns only `customer_id` values for a date range, then each agent loops
+(parallel or sequential) and hydrates **one customer** from star schema and/or
+OLTP. Databricks **Genie** agents run in the workspace. **Non-Genie** agents
+(LangGraph, Google ADK, AWS Strands) are invoked from the portal through
+FastAPI and this MCP server. In-repo LangGraph and Google ADK packages are
+conformance clients that keep the MCP tools honest.
+
+## Business Data Architecture
+
+Sales fraud and funds-movement fraud share `dim_customer` and `dim_date` only.
+Do not hang wire transfers or card dues off `customer_order` / `fact_sales`.
+Add a second grain: **posting** (`customer_transaction` / `fact_transaction`)
+with account, type, counterparty, amount, and balance before/after.
+
+```mermaid
+flowchart TB
+  subgraph owners [This repo: data owners]
+    DC[dim_customer]
+    DD[dim_date]
+    DA[dim_account]
+    DT[dim_transaction_type]
+    DP[dim_counterparty]
+    FO[OLTP sales: order / line / shipment]
+    FS[fact_sales / fact_returns]
+    TX[OLTP customer_transaction]
+    FT[fact_transaction]
+    DC --> FO
+    DC --> TX
+    DD --> FS
+    DD --> FT
+    DA --> TX
+    DA --> FT
+    DT --> TX
+    DT --> FT
+    DP --> TX
+    DP --> FT
+    FO --> FS
+    TX --> FT
+  end
+
+  subgraph serve [How agents reach the data]
+    MCP[Consumer MCP: list_customer_ids then get_customer_oltp / get_customer_star]
+    API[Portal FastAPI]
+    GE[Databricks Genie Agents]
+    LG[LangGraph]
+    ADK[Google ADK]
+    ST[AWS Strands]
+  end
+
+  FS --> MCP
+  FT --> MCP
+  FO --> MCP
+  TX --> MCP
+  FS --> GE
+  FT --> GE
+  API --> LG
+  API --> ADK
+  API --> ST
+  LG --> MCP
+  ADK --> MCP
+  ST --> MCP
+
+  classDef ownersBox fill:#2563eb,stroke:#1e40af,color:#ffffff
+  class owners ownersBox
+```
+
+**MCP contract (customer first)**
+
+1. `list_customer_ids(from_date, to_date)` — IDs only, paged
+2. Agent loop (parallel with a small concurrency cap, or sequential)
+3. `get_customer_oltp` and/or `get_customer_star` for that `customer_id` and the same window (max 50 rows; never 300,000 postings)
+
+Databricks Genie agents query Unity Catalog in the workspace. Portal users reach
+non-Genie agents (LangGraph, Google ADK, AWS Strands) through FastAPI; those
+agents call MCP, not raw tables.
+
+**Dims to add (few, conformed)**
+
+| Dim | Why |
+|---|---|
+| `dim_transaction_type` | Type signal for funds-movement agents |
+| `dim_account` | Same vs other account; product (checking / CD / card / brokerage) |
+| `dim_counterparty` | Other bank, other person, brokerage |
+| `dim_date` | Already present |
+
+Do not add `dim_wire`, `dim_cash`, or `dim_credit_card`. Those are rows in
+`dim_transaction_type`.
+
+**`dim_transaction_type`**
+
+| type_code | class | direction | same_bank | same_account |
+|---|---|---|---|---|
+| wire_transfer | transfer | out | no | no |
+| cash_deposit | cash | in | yes | yes |
+| cash_withdrawal | cash | out | yes | yes |
+| bank_transfer_other | transfer | out | no | no |
+| bank_transfer_same_acct | transfer | book | yes | yes |
+| intra_bank_same_accts | transfer | book | yes | no |
+| cd_withdraw | term | out | yes | no |
+| cd_deposit | term | in | yes | no |
+| brokerage_in | securities | in | no | no |
+| brokerage_out | securities | out | no | no |
+| demand_draft_request | instrument | out | yes | no |
+| demand_draft_issue | instrument | out | yes | no |
+| card_purchase | card | out | no | no |
+| card_payment | card | in | yes | no |
+| card_due | card | obligation | yes | no |
+
+OLTP posting row: `transaction_id`, `customer_id`, `account_id`,
+`counterparty_id`, `type_code`, `txn_ts`, `amount`, `balance_before`,
+`balance_after`, `status`. Partition facts by date and cluster on
+`customer_id` / `account_id`. Refresh `fact_transaction` incrementally; do not
+overwrite 10 years on every run.
+
 Each of `api`, `workflows`, and `adapter_databricks` has an `ObjectsFactory`
 that looks up named components and caches singleton instances.
 
