@@ -544,7 +544,7 @@ Open a space → **Configure**. Same mapping for every fraud specialist
 | **About → Common questions** | This repo | same | Geo: `sample_questions` in `fraud_agents.py`. Others: `Run fraud case {id} {name}`. Retail: `SAMPLE_QUESTIONS` |
 | **About → Warehouse** | This repo | **01 - Setup - Step 01 - Create Databricks stack** (name); Step 02 attaches it | warehouse `ecommerce-genie-ontology` |
 | **About → Agent ID** | Databricks | none (assigned at create) | `_genie_agent_registry.space_id` |
-| **Sources** | This repo | **Step 02** or **02 - Fraud Agent - NN** | Fraud: `SHARED_TABLES` (`retail_oltp` + `retail_star`). Retail: metric views `mv_*` only |
+| **Sources** | This repo | **Step 02** or **02 - Fraud Agent - NN** | Fraud: `SHARED_TABLES` (`retail_oltp` + `retail_star`). **Not** on any Genie space: `analytics_log`, `analytics_log_customer`, `ingestion_tracker`, `ingestion_log` (MCP / Spark only). Retail: metric views `mv_*` only |
 | **Instructions** | This repo | **Step 02** or **02 - Fraud Agent - NN** (`system_prompt` overrides) | Geo: Case 15 notes. Others: default “investigate only these cases”. Retail: `AGENT_INSTRUCTIONS` |
 | **Examples** (join list) | Databricks, from keys we created | **01 - Setup - Step 01** (`ALTER TABLE … FOREIGN KEY` in `t01`). Retail also gets example SQL from Step 02 | We do **not** send example SQL on fraud spaces |
 
@@ -571,7 +571,9 @@ the box on that GitHub Action). Do not start from Retail Analytics for Case 15.
 - Catalog: `{CATALOG}` (Unity Catalog `ecommerce_genie_ontology`)
 - `data_sources.tables`: the `SHARED_TABLES` list — fully qualified
   `{CATALOG}.retail_oltp.*` and `{CATALOG}.retail_star.*` only. Genie does
-  not search other catalogs or schemas.
+  not search other catalogs or schemas. Session/ETL tables
+  (`analytics_log`, `analytics_log_customer`, `ingestion_tracker`,
+  `ingestion_log`) are omitted so every fraud space skips them.
 - `instructions.text_instructions`: Case 15 notes (overridable with
   **system_prompt** on GitHub Action **02 - Fraud Agent - 10 - Fraud Geo Agent**)
 - `config.sample_questions`: the five starters below
@@ -642,7 +644,6 @@ no rows. After Step 100 + data, the same prompt returns these 20 pairs.
 | Starter (schema smoke) | `Monthly time series aggregation of order_amount from customer_order table` |
 | Starter (schema smoke) | `Distribution of segment in the customer table` |
 | Starter (schema smoke) | `What tables are there and how are they connected? Give me a short summary.` |
-| Starter (schema smoke) | `Distribution of customer_id count in the analytics_log table` |
 | GHA extra | `Run fraud case 15 Impossible geo two regions one hour for customer ids: {ids}` (`additional_prompt`) |
 
 **Context we provide** (what Genie sees before the LLM writes SQL):

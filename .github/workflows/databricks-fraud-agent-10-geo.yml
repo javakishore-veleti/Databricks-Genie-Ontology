@@ -29,10 +29,6 @@ on:
         description: "Ask — What tables are there and how are they connected? Give me a short summary."
         type: boolean
         default: false
-      ask_analytics_log_customers:
-        description: "Ask — Distribution of customer_id count in the analytics_log table"
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -53,7 +49,6 @@ jobs:
       || inputs.ask_order_amount_timeseries
       || inputs.ask_customer_segment
       || inputs.ask_tables_summary
-      || inputs.ask_analytics_log_customers
       || inputs.additional_prompt != ''
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -76,7 +71,6 @@ jobs:
       ASK_ORDER_AMOUNT_TIMESERIES: ${{ inputs.ask_order_amount_timeseries }}
       ASK_CUSTOMER_SEGMENT: ${{ inputs.ask_customer_segment }}
       ASK_TABLES_SUMMARY: ${{ inputs.ask_tables_summary }}
-      ASK_ANALYTICS_LOG_CUSTOMERS: ${{ inputs.ask_analytics_log_customers }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -98,9 +92,6 @@ jobs:
           fi
           if [ "$ASK_TABLES_SUMMARY" = "true" ]; then
             ask "What tables are there and how are they connected? Give me a short summary."
-          fi
-          if [ "$ASK_ANALYTICS_LOG_CUSTOMERS" = "true" ]; then
-            ask "Distribution of customer_id count in the analytics_log table"
           fi
           if [ -n "$ADDITIONAL_PROMPT" ]; then
             ask "Run fraud case 15 Impossible geo two regions one hour for customer ids: ${ADDITIONAL_PROMPT}"

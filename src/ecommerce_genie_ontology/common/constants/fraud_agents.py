@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from ecommerce_genie_ontology.common.constants.fraud_cases import FRAUD_CASES
 
+# Genie Sources for every fraud specialist. Keep analytics_log,
+# analytics_log_customer, ingestion_tracker, and ingestion_log off this
+# list — those are MCP / Spark operator tables, not Genie questions.
 SHARED_TABLES = (
     ("customer", "oltp", "Retail customers"),
     ("customer_address", "oltp", "Billing, shipping, and home addresses (3 per customer)"),
@@ -13,8 +16,6 @@ SHARED_TABLES = (
     ("customer_order_shipment", "oltp", "Shipments and carriers"),
     ("customer_transaction", "oltp", "Funds-movement postings with type, amount, and balances"),
     ("entity_link", "oltp", "1-2 hop entity relationships for shared address"),
-    ("analytics_log", "oltp", "Fraud analytics session header"),
-    ("analytics_log_customer", "oltp", "Per-customer fraud outcome and counts"),
     ("dim_customer", "star", "Customer dimension"),
     ("dim_product", "star", "Product dimension"),
     ("dim_account", "star", "Customer accounts"),
@@ -107,7 +108,6 @@ FRAUD_AGENTS: tuple[dict[str, object], ...] = (
             "Monthly time series aggregation of order_amount from customer_order table",
             "Distribution of segment in the customer table",
             "What tables are there and how are they connected? Give me a short summary.",
-            "Distribution of customer_id count in the analytics_log table",
         ),
     },
 )
