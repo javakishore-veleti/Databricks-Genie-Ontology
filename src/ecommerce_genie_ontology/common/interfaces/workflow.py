@@ -4,7 +4,7 @@ from typing import Protocol
 
 from ecommerce_genie_ontology.common.dtos.jobs import JobSpec
 from ecommerce_genie_ontology.common.dtos.ontology import DpCtx, DyCtx, LsCtx, PwCtx, TcCtx, WfCtx, WhCtx
-from ecommerce_genie_ontology.common.dtos.pipeline import EcCtx, EhCtx, FcCtx, OdCtx, OhCtx
+from ecommerce_genie_ontology.common.dtos.pipeline import EcCtx, EhCtx, EmCtx, FcCtx, NxCtx, OdCtx, OhCtx
 
 
 class WorkflowTask(Protocol):
@@ -42,7 +42,11 @@ class WorkflowRunner(Protocol):
 
     def etl_historical(self, ctx: EhCtx) -> None: ...
 
+    def generate_next_oltp(self, ctx: NxCtx) -> None: ...
+
     def etl_cdc(self, ctx: EcCtx) -> None: ...
+
+    def etl_next_months(self, ctx: EmCtx) -> None: ...
 
     def run_fraud_case(self, ctx: FcCtx) -> None: ...
 

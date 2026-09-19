@@ -1,0 +1,47 @@
+name: Populate next 100000 OLTP rows
+
+on:
+  workflow_dispatch:
+    inputs:
+      row_count:
+        description: OLTP rows to append (max 100000)
+        required: true
+        default: "100000"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: databricks-oltp-next
+  cancel-in-progress: false
+
+jobs:
+  generate-next-oltp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      DATABRICKS_ACCOUNT_ID: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
+      DATABRICKS_ACCOUNT_HOST: ${{ secrets.DATABRICKS_ACCOUNT_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_WORKSPACE_NAME: ${{ secrets.DATABRICKS_WORKSPACE_NAME }}
+      DATABRICKS_AWS_REGION: ${{ secrets.DATABRICKS_AWS_REGION }}
+      DATABRICKS_WORKSPACE_ADMIN_EMAILS: ${{ secrets.DATABRICKS_WORKSPACE_ADMIN_EMAILS }}
+      DATABRICKS_WAREHOUSE_NAME: ${{ secrets.DATABRICKS_WAREHOUSE_NAME }}
+      DATABRICKS_CATALOG: ${{ secrets.DATABRICKS_CATALOG }}
+      DATABRICKS_SCHEMA: ${{ secrets.DATABRICKS_SCHEMA }}
+      DATABRICKS_OLTP_SCHEMA: ${{ secrets.DATABRICKS_OLTP_SCHEMA }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Databricks env
+        uses: ./.github/actions/setup-databricks
+      - name: Deploy Spark jobs
+        run: uv run genie-ontology deploy
+      - name: Populate next OLTP rows
+        run: >
+          uv run genie-ontology run generate_next_oltp --as-job
+          --row-count "${{ inputs.row_count }}"

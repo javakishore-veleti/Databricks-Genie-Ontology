@@ -130,6 +130,8 @@ class JobsDao:
             JobParameterDefinition(name="year_count", default=str(self._settings.year_count)),
             JobParameterDefinition(name="cdc_count", default="1000"),
             JobParameterDefinition(name="year_window", default="latest"),
+            JobParameterDefinition(name="row_count", default="100000"),
+            JobParameterDefinition(name="months", default="3"),
         ]
 
     @staticmethod
@@ -149,6 +151,8 @@ class JobsDao:
             "year_count": "{{job.parameters.year_count}}",
             "cdc_count": "{{job.parameters.cdc_count}}",
             "year_window": "{{job.parameters.year_window}}",
+            "row_count": "{{job.parameters.row_count}}",
+            "months": "{{job.parameters.months}}",
         }
         if extra:
             params.update(extra)
@@ -172,6 +176,8 @@ dbutils.widgets.text("orders_per_year", "25000", "Orders per customer per year")
 dbutils.widgets.text("year_count", "3", "Historical years")
 dbutils.widgets.text("cdc_count", "1000", "Realtime order count")
 dbutils.widgets.text("year_window", "latest", "latest | last_2 | last_3 | all")
+dbutils.widgets.text("row_count", "100000", "Next OLTP row batch")
+dbutils.widgets.text("months", "3", "Next star months 1-12")
 
 # COMMAND ----------
 

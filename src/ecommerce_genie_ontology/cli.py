@@ -37,6 +37,12 @@ from ecommerce_genie_ontology.common.dtos.pipeline import (
     OdCtx,
     OdReq,
     OdResp,
+    EmCtx,
+    EmReq,
+    EmResp,
+    NxCtx,
+    NxReq,
+    NxResp,
     OhCtx,
     OhReq,
     OhResp,
@@ -145,6 +151,16 @@ class CliApp:
             self._runner.etl_cdc(ctx)
             print(ctx.resp)
             return 0
+        if args.workflow == "generate_next_oltp":
+            ctx = NxCtx(NxReq(row_count=args.row_count, as_job=args.as_job), NxResp())
+            self._runner.generate_next_oltp(ctx)
+            print(ctx.resp)
+            return 0
+        if args.workflow == "etl_next_months":
+            ctx = EmCtx(EmReq(months=args.months, as_job=args.as_job), EmResp())
+            self._runner.etl_next_months(ctx)
+            print(ctx.resp)
+            return 0
         if args.workflow == "fraud":
             ctx = FcCtx(FcReq(case_id=args.case_id), FcResp())
             self._runner.run_fraud_case(ctx)
@@ -198,6 +214,8 @@ class CliApp:
                 "generate_realtime",
                 "etl_historical",
                 "etl_cdc",
+                "generate_next_oltp",
+                "etl_next_months",
                 "fraud",
                 "all",
             ],
@@ -240,6 +258,8 @@ class CliApp:
             choices=["latest", "last_2", "last_3", "all"],
             help="Date window for realtime orders",
         )
+        run.add_argument("--row-count", type=int, default=100000, help="Next OLTP rows (max 100000)")
+        run.add_argument("--months", type=int, default=3, choices=list(range(1, 13)), help="Next star months")
         run.add_argument("--case-id", default="01", help="Fraud case id 01-15")
         serve = sub.add_parser("serve", help="Start the FastAPI HTTP interface")
         serve.add_argument("--host", default="127.0.0.1")

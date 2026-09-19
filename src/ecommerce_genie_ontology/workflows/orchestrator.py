@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from ecommerce_genie_ontology.common.dtos.jobs import JobSpec
 from ecommerce_genie_ontology.common.dtos.ontology import DpCtx, LsCtx, PwCtx, DyCtx, TcCtx, WfCtx, WfItem, WhCtx
-from ecommerce_genie_ontology.common.dtos.pipeline import EcCtx, EhCtx, FcCtx, OdCtx, OhCtx
+from ecommerce_genie_ontology.common.dtos.pipeline import EcCtx, EhCtx, EmCtx, FcCtx, NxCtx, OdCtx, OhCtx
 from ecommerce_genie_ontology.common.interfaces.workflow import WorkflowRunner
 from ecommerce_genie_ontology.workflows.job_specs import JOB_DESCRIPTIONS, WORKFLOW_ORDER
 
@@ -96,6 +96,12 @@ class WorkflowOrchestrator:
 
     def etl_cdc(self, ctx: EcCtx) -> None:
         self._factory.pipeline_facade().etl_cdc(ctx)
+
+    def generate_next_oltp(self, ctx: NxCtx) -> None:
+        self._factory.pipeline_facade().generate_next_oltp(ctx)
+
+    def etl_next_months(self, ctx: EmCtx) -> None:
+        self._factory.pipeline_facade().etl_next_months(ctx)
 
     def run_fraud_case(self, ctx: FcCtx) -> None:
         self._factory.pipeline_facade().run_fraud_case(ctx)

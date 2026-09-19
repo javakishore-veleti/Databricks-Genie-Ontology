@@ -10,7 +10,7 @@ from ecommerce_genie_ontology.common.constants.schema_ddl import (
 from ecommerce_genie_ontology.common.constants.transaction_types import ACCOUNT_PRODUCTS
 
 
-def etl_historical(spark, catalog: str, star_schema: str, oltp_schema: str) -> None:
+def refresh_star_dims(spark, catalog: str, star_schema: str, oltp_schema: str) -> None:
     from pyspark.sql import functions as F
 
     oltp = f"{catalog}.{oltp_schema}"
@@ -66,6 +66,8 @@ def etl_historical(spark, catalog: str, star_schema: str, oltp_schema: str) -> N
         )
         accounts.write.mode("overwrite").saveAsTable(f"{star}.dim_account")
 
+    if not spark.catalog.tableExists(f"{oltp}.customer_order_line"):
+        return
     products = (
         spark.table(f"{oltp}.customer_order_line")
         .select("sku")
@@ -78,7 +80,24 @@ def etl_historical(spark, catalog: str, star_schema: str, oltp_schema: str) -> N
         .select("product_key", F.col("sku"), "product_name", "category", "brand", "unit_cost")
     )
     products.write.mode("overwrite").saveAsTable(f"{star}.dim_product")
+    if spark.catalog.tableExists(f"{oltp}.customer_order"):
+        stores = (
+            spark.table(f"{oltp}.customer_order")
+            .select(F.col("store_id").alias("store_key"))
+            .distinct()
+            .withColumn("store_name", F.concat(F.lit("Store "), F.lpad(F.col("store_key").cast("string"), 2, "0")))
+            .withColumn("region", F.lit("West"))
+            .withColumn("channel", F.when(F.col("store_key") <= 5, F.lit("Online")).otherwise(F.lit("In-Store")))
+        )
+        stores.write.mode("overwrite").saveAsTable(f"{star}.dim_store")
 
+
+def etl_historical(spark, catalog: str, star_schema: str, oltp_schema: str) -> None:
+    from pyspark.sql import functions as F
+
+    refresh_star_dims(spark, catalog, star_schema, oltp_schema)
+    oltp = f"{catalog}.{oltp_schema}"
+    star = f"{catalog}.{star_schema}"
     orders = spark.table(f"{oltp}.customer_order")
     lines = spark.table(f"{oltp}.customer_order_line")
     facts = (
@@ -118,15 +137,6 @@ def etl_historical(spark, catalog: str, star_schema: str, oltp_schema: str) -> N
         F.lit(50).cast("int").alias("stock_received"),
     )
     inventory.write.mode("overwrite").saveAsTable(f"{star}.fact_inventory")
-
-    stores = (
-        orders.select(F.col("store_id").alias("store_key"))
-        .distinct()
-        .withColumn("store_name", F.concat(F.lit("Store "), F.lpad(F.col("store_key").cast("string"), 2, "0")))
-        .withColumn("region", F.lit("West"))
-        .withColumn("channel", F.when(F.col("store_key") <= 5, F.lit("Online")).otherwise(F.lit("In-Store")))
-    )
-    stores.write.mode("overwrite").saveAsTable(f"{star}.dim_store")
 
     if spark.catalog.tableExists(f"{oltp}.customer_transaction"):
         types = spark.table(f"{star}.dim_transaction_type").select("type_key", "type_code")

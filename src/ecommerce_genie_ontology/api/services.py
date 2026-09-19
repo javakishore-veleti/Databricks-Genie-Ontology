@@ -12,7 +12,7 @@ from ecommerce_genie_ontology.common.dtos.ontology import (
 )
 from ecommerce_genie_ontology.common.constants.fraud_agents import agent_by_id, route_agent_id
 from ecommerce_genie_ontology.common.dtos.chat import ChCtx
-from ecommerce_genie_ontology.common.dtos.pipeline import EcCtx, EhCtx, FcCtx, OdCtx, OhCtx
+from ecommerce_genie_ontology.common.dtos.pipeline import EcCtx, EhCtx, EmCtx, FcCtx, NxCtx, OdCtx, OhCtx
 from ecommerce_genie_ontology.workflows.objects_factory import WorkflowsObjectsFactory
 
 
@@ -59,6 +59,12 @@ class WorkflowsApiService:
 
     def etl_cdc(self, ctx: EcCtx) -> None:
         self._runner.etl_cdc(ctx)
+
+    def generate_next_oltp(self, ctx: NxCtx) -> None:
+        self._runner.generate_next_oltp(ctx)
+
+    def etl_next_months(self, ctx: EmCtx) -> None:
+        self._runner.etl_next_months(ctx)
 
     def run_fraud_case(self, ctx: FcCtx) -> None:
         self._runner.run_fraud_case(ctx)

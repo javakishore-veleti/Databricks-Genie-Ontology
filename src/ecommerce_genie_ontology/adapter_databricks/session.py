@@ -127,6 +127,8 @@ class WorkspaceSession:
                 year_count=int(widget("year_count", "3") or "3"),
                 cdc_count=int(widget("cdc_count", "1000") or "1000"),
                 year_window=widget("year_window", "latest") or "latest",
+                row_count=int(widget("row_count", "100000") or "100000"),
+                months=int(widget("months", "3") or "3"),
             ),
             workspace=WorkspaceClient(),
             spark=spark,

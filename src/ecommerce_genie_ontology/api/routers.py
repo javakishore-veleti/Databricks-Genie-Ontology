@@ -27,6 +27,10 @@ from ecommerce_genie_ontology.api.schemas import (
     FcRespResult,
     OdReq,
     OdRespResult,
+    EmReq,
+    EmRespResult,
+    NxReq,
+    NxRespResult,
     OhReq,
     OhRespResult,
     ChReq,
@@ -34,7 +38,22 @@ from ecommerce_genie_ontology.api.schemas import (
 )
 from ecommerce_genie_ontology.common.constants.fraud_agents import FRAUD_AGENTS, case_names
 from ecommerce_genie_ontology.common.constants.fraud_cases import FRAUD_CASES
-from ecommerce_genie_ontology.common.dtos.pipeline import EcCtx, EcResp, EhCtx, EhResp, FcCtx, FcResp, OdCtx, OdResp, OhCtx, OhResp
+from ecommerce_genie_ontology.common.dtos.pipeline import (
+    EcCtx,
+    EcResp,
+    EhCtx,
+    EhResp,
+    EmCtx,
+    EmResp,
+    FcCtx,
+    FcResp,
+    NxCtx,
+    NxResp,
+    OdCtx,
+    OdResp,
+    OhCtx,
+    OhResp,
+)
 from ecommerce_genie_ontology.common.dtos.chat import ChCtx, ChResp
 from ecommerce_genie_ontology.api.services import WorkflowsApiService
 from ecommerce_genie_ontology.common.dtos.ontology import (
@@ -129,6 +148,18 @@ class OntologyRouter:
             self.etl_cdc,
             methods=["POST"],
             response_model=EcRespResult,
+        )
+        self.router.add_api_route(
+            "/oltp/next",
+            self.generate_next_oltp,
+            methods=["POST"],
+            response_model=NxRespResult,
+        )
+        self.router.add_api_route(
+            "/etl/next-months",
+            self.etl_next_months,
+            methods=["POST"],
+            response_model=EmRespResult,
         )
         self.router.add_api_route("/fraud/cases", self.list_fraud_cases, methods=["GET"])
         self.router.add_api_route("/fraud/agents", self.list_fraud_agents, methods=["GET"])
@@ -245,6 +276,26 @@ class OntologyRouter:
         except RuntimeError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return EcRespResult.of(ctx.resp)
+
+    def generate_next_oltp(self, req: NxReq) -> NxRespResult:
+        ctx = NxCtx(req, NxResp())
+        try:
+            self._service.generate_next_oltp(ctx)
+        except SystemExit as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return NxRespResult.of(ctx.resp)
+
+    def etl_next_months(self, req: EmReq | None = None) -> EmRespResult:
+        ctx = EmCtx(req or EmReq(), EmResp())
+        try:
+            self._service.etl_next_months(ctx)
+        except SystemExit as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return EmRespResult.of(ctx.resp)
 
     def list_fraud_cases(self) -> dict:
         return {"cases": list(FRAUD_CASES)}

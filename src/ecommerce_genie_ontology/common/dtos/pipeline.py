@@ -165,3 +165,81 @@ class FcCtx:
     def __init__(self, req: FcReq, resp: FcResp) -> None:
         self.req = req
         self.resp = resp
+
+
+class NxReq(BaseModel):
+    model_config = ConfigDict(title="NxReq")
+    row_count: int = Field(default=100_000, ge=1, le=100_000)
+    as_job: bool = True
+
+
+@dataclass
+class NxResp:
+    rows: int = 0
+    orders: int = 0
+    postings: int = 0
+    start_date: str = ""
+    end_date: str = ""
+    year: int = 0
+    status: str = ""
+    message: str = ""
+
+
+class NxRespResult(BaseModel):
+    model_config = ConfigDict(title="NxRespResult")
+    rows: int = 0
+    orders: int = 0
+    postings: int = 0
+    start_date: str = ""
+    end_date: str = ""
+    year: int = 0
+    status: str = ""
+    message: str = ""
+
+    @classmethod
+    def of(cls, resp: NxResp) -> NxRespResult:
+        return cls(**resp.__dict__)
+
+
+class NxCtx:
+    def __init__(self, req: NxReq, resp: NxResp) -> None:
+        self.req = req
+        self.resp = resp
+
+
+class EmReq(BaseModel):
+    model_config = ConfigDict(title="EmReq")
+    months: int = Field(default=3, ge=1, le=12)
+    as_job: bool = True
+
+
+@dataclass
+class EmResp:
+    rows: int = 0
+    months: int = 0
+    start_date: str = ""
+    end_date: str = ""
+    year: int = 0
+    status: str = ""
+    message: str = ""
+
+
+class EmRespResult(BaseModel):
+    model_config = ConfigDict(title="EmRespResult")
+    rows: int = 0
+    months: int = 0
+    start_date: str = ""
+    end_date: str = ""
+    year: int = 0
+    status: str = ""
+    message: str = ""
+
+    @classmethod
+    def of(cls, resp: EmResp) -> EmRespResult:
+        return cls(**resp.__dict__)
+
+
+class EmCtx:
+    def __init__(self, req: EmReq, resp: EmResp) -> None:
+        self.req = req
+        self.resp = resp

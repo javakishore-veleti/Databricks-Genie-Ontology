@@ -115,6 +115,39 @@ CREATE TABLE IF NOT EXISTS {fq}._cdc_watermark (
   updated_at TIMESTAMP
 ) USING DELTA
 """,
+        *ingest_statements(fq),
+    ]
+
+
+def ingest_statements(fq: str) -> list[str]:
+    return [
+        f"""
+CREATE TABLE IF NOT EXISTS {fq}.ingestion_tracker (
+  tracker_id STRING NOT NULL,
+  table_name STRING NOT NULL,
+  rows_inserted BIGINT,
+  start_date DATE,
+  end_date DATE,
+  year INT,
+  updated_at TIMESTAMP
+) USING DELTA
+""",
+        f"""
+CREATE TABLE IF NOT EXISTS {fq}.ingestion_log (
+  log_id STRING NOT NULL,
+  tracker_id STRING NOT NULL,
+  started_at TIMESTAMP,
+  ended_at TIMESTAMP,
+  starting_count BIGINT,
+  ending_count BIGINT,
+  start_date DATE,
+  end_date DATE,
+  year INT,
+  months INT,
+  pipeline STRING,
+  status STRING
+) USING DELTA
+""",
     ]
 
 

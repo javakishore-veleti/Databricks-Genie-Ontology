@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from ecommerce_genie_ontology.common.dtos.pipeline import EcCtx, EhCtx, FcCtx, OdCtx, OhCtx
+from ecommerce_genie_ontology.common.dtos.pipeline import EcCtx, EhCtx, EmCtx, FcCtx, NxCtx, OdCtx, OhCtx
 
 
 class PipelineFacade(Protocol):
@@ -10,8 +10,12 @@ class PipelineFacade(Protocol):
 
     def generate_realtime(self, ctx: OdCtx) -> None: ...
 
+    def generate_next_oltp(self, ctx: NxCtx) -> None: ...
+
     def etl_historical(self, ctx: EhCtx) -> None: ...
 
     def etl_cdc(self, ctx: EcCtx) -> None: ...
+
+    def etl_next_months(self, ctx: EmCtx) -> None: ...
 
     def run_fraud_case(self, ctx: FcCtx) -> None: ...

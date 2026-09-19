@@ -148,6 +148,7 @@ COMMENT 'Monthly inventory snapshot fact table. Grain: one product/store/month.'
 
 def _add_constraints(facade: ProvisionWorkspaceFacade) -> None:
     fq = facade.fq_schema
+    oltp = facade.fq_oltp
     pk_statements = [
         f"ALTER TABLE {fq}.dim_date     ADD CONSTRAINT pk_dim_date     PRIMARY KEY (date_key)",
         f"ALTER TABLE {fq}.dim_product  ADD CONSTRAINT pk_dim_product  PRIMARY KEY (product_key)",
@@ -163,6 +164,8 @@ def _add_constraints(facade: ProvisionWorkspaceFacade) -> None:
         f"ALTER TABLE {fq}.dim_account ADD CONSTRAINT pk_dim_account PRIMARY KEY (account_key)",
         f"ALTER TABLE {fq}.dim_counterparty ADD CONSTRAINT pk_dim_counterparty PRIMARY KEY (counterparty_key)",
         f"ALTER TABLE {fq}.fact_transaction ADD CONSTRAINT pk_fact_transaction PRIMARY KEY (transaction_id)",
+        f"ALTER TABLE {oltp}.ingestion_tracker ADD CONSTRAINT pk_ingestion_tracker PRIMARY KEY (tracker_id)",
+        f"ALTER TABLE {oltp}.ingestion_log ADD CONSTRAINT pk_ingestion_log PRIMARY KEY (log_id)",
     ]
     fk_statements = [
         f"ALTER TABLE {fq}.fact_sales ADD CONSTRAINT fk_sales_date FOREIGN KEY (date_key) REFERENCES {fq}.dim_date (date_key)",

@@ -31,6 +31,8 @@ mcp.tool()(mcp_tools.run_fraud_agent_cases)
 mcp.tool()(mcp_tools.generate_historical_oltp)
 mcp.tool()(mcp_tools.generate_realtime_orders)
 mcp.tool()(mcp_tools.etl_star_historical)
+mcp.tool()(mcp_tools.generate_next_oltp)
+mcp.tool()(mcp_tools.etl_next_months)
 mcp.tool()(mcp_tools.etl_star_cdc)
 mcp.tool()(mcp_tools.query_dataset)
 

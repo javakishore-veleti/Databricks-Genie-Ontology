@@ -4,9 +4,30 @@ from typing import Any
 
 from ecommerce_genie_ontology.adapter_databricks.session import WorkspaceSession
 from ecommerce_genie_ontology.adapter_databricks.spark import etl as spark_etl
+from ecommerce_genie_ontology.adapter_databricks.spark import ingest as spark_ingest
 from ecommerce_genie_ontology.adapter_databricks.spark import oltp as spark_oltp
 from ecommerce_genie_ontology.common.constants.fraud_cases import FRAUD_CASES, fraud_sql
-from ecommerce_genie_ontology.common.dtos.pipeline import EcCtx, EcReq, EcResp, EhCtx, EhReq, EhResp, FcCtx, OdCtx, OdReq, OdResp, OhCtx, OhReq, OhResp
+from ecommerce_genie_ontology.common.dtos.pipeline import (
+    EcCtx,
+    EcReq,
+    EcResp,
+    EhCtx,
+    EhReq,
+    EhResp,
+    EmCtx,
+    EmReq,
+    EmResp,
+    FcCtx,
+    NxCtx,
+    NxReq,
+    NxResp,
+    OdCtx,
+    OdReq,
+    OdResp,
+    OhCtx,
+    OhReq,
+    OhResp,
+)
 from ecommerce_genie_ontology.common.interfaces.jobs import JobsFacade
 from ecommerce_genie_ontology.common.interfaces.pipeline import PipelineFacade
 from ecommerce_genie_ontology.common.interfaces.sql import SqlFacade
@@ -79,6 +100,31 @@ class PipelineFacadeImpl:
             ctx.resp.message = str(result)
         ctx.resp.status = "ok"
 
+    def generate_next_oltp(self, ctx: NxCtx) -> None:
+        result = self._run_spark_or_job(
+            "generate_next_oltp",
+            ctx.req.as_job,
+            lambda spark: spark_ingest.generate_next_oltp(
+                spark,
+                self._session.catalog,
+                self._session.context.oltp_schema,
+                ctx.req.row_count,
+            ),
+            {"row_count": str(ctx.req.row_count)},
+        )
+        if isinstance(result, dict):
+            ctx.resp.rows = int(result.get("rows", 0))
+            ctx.resp.orders = int(result.get("orders", 0))
+            ctx.resp.postings = int(result.get("postings", 0))
+            ctx.resp.start_date = str(result.get("start_date", ""))
+            ctx.resp.end_date = str(result.get("end_date", ""))
+            ctx.resp.year = int(result.get("year", 0) or 0)
+            ctx.resp.status = str(result.get("status", "ok"))
+            ctx.resp.message = str(result.get("message", "ok"))
+        else:
+            ctx.resp.status = "ok"
+            ctx.resp.message = str(result)
+
     def etl_historical(self, ctx: EhCtx) -> None:
         self._run_spark_or_job(
             "etl_historical",
@@ -109,6 +155,31 @@ class PipelineFacadeImpl:
         ctx.resp.rows = int(result.get("rows", 0)) if isinstance(result, dict) else 0
         ctx.resp.status = "ok"
         ctx.resp.message = "etl cdc completed"
+
+    def etl_next_months(self, ctx: EmCtx) -> None:
+        result = self._run_spark_or_job(
+            "etl_next_months",
+            ctx.req.as_job,
+            lambda spark: spark_ingest.etl_next_months(
+                spark,
+                self._session.catalog,
+                self._session.schema_name,
+                self._session.context.oltp_schema,
+                ctx.req.months,
+            ),
+            {"months": str(ctx.req.months)},
+        )
+        if isinstance(result, dict):
+            ctx.resp.rows = int(result.get("rows", 0))
+            ctx.resp.months = int(result.get("months", ctx.req.months))
+            ctx.resp.start_date = str(result.get("start_date", ""))
+            ctx.resp.end_date = str(result.get("end_date", ""))
+            ctx.resp.year = int(result.get("year", 0) or 0)
+            ctx.resp.status = str(result.get("status", "ok"))
+            ctx.resp.message = str(result.get("message", "ok"))
+        else:
+            ctx.resp.status = "ok"
+            ctx.resp.message = str(result)
 
     def run_fraud_case(self, ctx: FcCtx) -> None:
         case = next((item for item in FRAUD_CASES if item["id"] == ctx.req.case_id), None)
@@ -156,6 +227,14 @@ class PipelineFacadeImpl:
 
     def run_etl_cdc(self) -> None:
         self.etl_cdc(EcCtx(EcReq(as_job=False), EcResp()))
+
+    def run_generate_next_oltp(self) -> None:
+        self.generate_next_oltp(
+            NxCtx(NxReq(row_count=self._session.context.row_count, as_job=False), NxResp())
+        )
+
+    def run_etl_next_months(self) -> None:
+        self.etl_next_months(EmCtx(EmReq(months=self._session.context.months, as_job=False), EmResp()))
 
     def _run_spark_or_job(self, workflow: str, as_job: bool, fn, params: dict[str, str]):
         spark = self._session.spark

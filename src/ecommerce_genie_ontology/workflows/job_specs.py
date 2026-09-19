@@ -12,6 +12,8 @@ JOB_NAMES = {
     "generate_realtime": "ecommerce-genie-ontology-generate-realtime",
     "etl_historical": "ecommerce-genie-ontology-etl-historical",
     "etl_cdc": "ecommerce-genie-ontology-etl-cdc",
+    "generate_next_oltp": "ecommerce-genie-ontology-generate-next-oltp",
+    "etl_next_months": "ecommerce-genie-ontology-etl-next-months",
 }
 
 JOB_DESCRIPTIONS = {
@@ -23,6 +25,8 @@ JOB_DESCRIPTIONS = {
     "generate_realtime": "Append 100-10000 new OLTP orders for CDC.",
     "etl_historical": "Rebuild star-schema dims/facts from OLTP.",
     "etl_cdc": "Apply Delta change feed into fact_sales and fact_transaction.",
+    "generate_next_oltp": "Append the next 100,000 OLTP rows and update ingestion_tracker / ingestion_log.",
+    "etl_next_months": "Append star dims/facts for the next N months from the tracker window.",
 }
 
 WORKFLOW_ORDER = ("provision", "create_agents", "invoke_agents")
@@ -227,6 +231,36 @@ def job_specs() -> list[JobSpec]:
                     "ecommerce_genie_ontology.adapter_databricks.facades.pipeline_facade",
                     "PipelineFacadeImpl",
                     description="CDC star schema ETL",
+                ),
+            ),
+        ),
+        JobSpec(
+            workflow_name="generate_next_oltp",
+            job_name=JOB_NAMES["generate_next_oltp"],
+            description=JOB_DESCRIPTIONS["generate_next_oltp"],
+            tasks=(
+                _task(
+                    "generate_next_oltp",
+                    "generate_next_oltp",
+                    "ecommerce_genie_ontology.workflows.pipeline.tasks.generate_next_oltp",
+                    "ecommerce_genie_ontology.adapter_databricks.facades.pipeline_facade",
+                    "PipelineFacadeImpl",
+                    description="Append next 100000 OLTP rows",
+                ),
+            ),
+        ),
+        JobSpec(
+            workflow_name="etl_next_months",
+            job_name=JOB_NAMES["etl_next_months"],
+            description=JOB_DESCRIPTIONS["etl_next_months"],
+            tasks=(
+                _task(
+                    "etl_next_months",
+                    "etl_next_months",
+                    "ecommerce_genie_ontology.workflows.pipeline.tasks.etl_next_months",
+                    "ecommerce_genie_ontology.adapter_databricks.facades.pipeline_facade",
+                    "PipelineFacadeImpl",
+                    description="Star ETL for the next N months",
                 ),
             ),
         ),

@@ -11,9 +11,15 @@ from ecommerce_genie_ontology.common.dtos.pipeline import (
     EhCtx,
     EhReq,
     EhResp,
+    EmCtx,
+    EmReq,
+    EmResp,
     FcCtx,
     FcReq,
     FcResp,
+    NxCtx,
+    NxReq,
+    NxResp,
     OdCtx,
     OdReq,
     OdResp,
@@ -133,6 +139,37 @@ def etl_star_historical(as_job: bool = True) -> dict:
     ctx = EhCtx(EhReq(as_job=as_job), EhResp())
     _runner().etl_historical(ctx)
     return {"status": ctx.resp.status, "message": ctx.resp.message}
+
+
+def generate_next_oltp(row_count: int = 100000, as_job: bool = True) -> dict:
+    """Append the next 100000 OLTP rows. Updates ingestion_tracker and ingestion_log."""
+    ctx = NxCtx(NxReq(row_count=row_count, as_job=as_job), NxResp())
+    _runner().generate_next_oltp(ctx)
+    return {
+        "rows": ctx.resp.rows,
+        "orders": ctx.resp.orders,
+        "postings": ctx.resp.postings,
+        "start_date": ctx.resp.start_date,
+        "end_date": ctx.resp.end_date,
+        "year": ctx.resp.year,
+        "status": ctx.resp.status,
+        "message": ctx.resp.message,
+    }
+
+
+def etl_next_months(months: int = 3, as_job: bool = True) -> dict:
+    """Append star dims/facts for the next N months (1-12). No error if less data remains."""
+    ctx = EmCtx(EmReq(months=months, as_job=as_job), EmResp())
+    _runner().etl_next_months(ctx)
+    return {
+        "rows": ctx.resp.rows,
+        "months": ctx.resp.months,
+        "start_date": ctx.resp.start_date,
+        "end_date": ctx.resp.end_date,
+        "year": ctx.resp.year,
+        "status": ctx.resp.status,
+        "message": ctx.resp.message,
+    }
 
 
 def etl_star_cdc(as_job: bool = True) -> dict:

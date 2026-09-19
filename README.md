@@ -55,7 +55,8 @@ year** (about 300,000 postings) plus sales orders. Orders are also capped at
 
 Sales and funds movement live in OLTP (`customer`, `customer_address`,
 `customer_account`, `customer_order`, `customer_order_line`,
-`customer_order_shipment`, `customer_transaction`) plus conformed dimensions
+`customer_order_shipment`, `customer_transaction`, `ingestion_tracker`,
+`ingestion_log`) plus conformed dimensions
 and facts (`dim_account`, `dim_transaction_type`, `dim_counterparty`,
 `fact_transaction` with the sales stars). Design volume is the capacity above.
 Agents are **customer-scoped**: MCP
@@ -205,6 +206,8 @@ src/ecommerce_genie_ontology/
 | **generate_realtime** | `ecommerce-genie-ontology-generate-realtime` | Append 100–10,000 new OLTP orders for CDC |
 | **etl_historical** | `ecommerce-genie-ontology-etl-historical` | Overwrite star-schema dims/facts from OLTP |
 | **etl_cdc** | `ecommerce-genie-ontology-etl-cdc` | Apply Delta change feed into `fact_sales` |
+| **generate_next_oltp** | `ecommerce-genie-ontology-generate-next-oltp` | Append next 100,000 OLTP rows; update `ingestion_tracker` / `ingestion_log` |
+| **etl_next_months** | `ecommerce-genie-ontology-etl-next-months` | Append dims/facts for the next 1–12 months from the tracker |
 
 Default generate is **200 customers**, **3 addresses**, **4 accounts**, **25,000 orders per customer per year**, **500 postings per customer per year**, **3 years** ending this month (about 15 million orders and 300,000 postings). That is per year, not per day. Dims/facts are rebuilt from those OLTP tables so they match. Do not set Generate to 100,000 × 30,000 × 10 — that is the design ceiling, not a GitHub Action.
 
@@ -244,8 +247,10 @@ Use **Actions → Run workflow**. Create starts a 3-hour timer; a later Create c
 5. **Run ETL Star Schema - CDC Data** — Delta CDF into `fact_sales`
 6. **Pipeline Historical OLTP and Star Schema** — steps 2 then 3
 7. **Pipeline Realtime Orders and CDC Star Schema** — steps 4 then 5
-8. **Destroy Databricks stack in 3 hours** — queued automatically after Create
-9. **Destroy Databricks stack** — manual wipe (cancels the 3-hour timer)
+8. **Populate next 100000 OLTP rows** — append one batch; writes `ingestion_tracker` / `ingestion_log`
+9. **Populate next N months of dims and facts** — PySpark star load for 1–12 months (default 3). If less OLTP remains, loads what is there and does not fail
+10. **Destroy Databricks stack in 3 hours** — queued automatically after Create
+11. **Destroy Databricks stack** — manual wipe (cancels the 3-hour timer)
 
 Destroy drops the catalog, deletes the warehouse and workspace, then emails `CLEANUP_NOTIFY_EMAIL` that this codebase’s Databricks demo stack is gone and should not keep billing.
 
@@ -346,6 +351,8 @@ npm run ecommerce:api:run
 - `POST /api/v1/ontology/oltp/realtime` body: `OdReq` (`count` 100–10000, `year_window` `latest` \| `last_2` \| `last_3` \| `all`)
 - `POST /api/v1/ontology/etl/historical` body: `EhReq`
 - `POST /api/v1/ontology/etl/cdc` body: `EcReq`
+- `POST /api/v1/ontology/oltp/next` body: `NxReq` (`row_count` default 100000)
+- `POST /api/v1/ontology/etl/next-months` body: `EmReq` (`months` 1–12, default 3)
 - `GET /api/v1/ontology/fraud/cases`
 - `POST /api/v1/ontology/fraud/run` body: `FcReq` (`case_id` `01`–`15`)
 - `GET /api/v1/ontology/fraud/agents`
@@ -432,6 +439,8 @@ Cursor / Claude Desktop:
 | `generate_realtime_orders` | Append 100–10,000 new orders. Window: `latest` / `last_2` / `last_3` / `all`. |
 | `etl_star_historical` | Overwrite star dims and facts from OLTP. |
 | `etl_star_cdc` | Apply Delta change feed from `customer_order` into `fact_sales`. |
+| `generate_next_oltp` | Next 100,000 OLTP rows. Writes `ingestion_tracker` and `ingestion_log`. |
+| `etl_next_months` | Next N months of dims/facts (1–12). No error if less OLTP remains. |
 
 Customer-first contract (same warehouse; hydrate one customer after listing
 IDs): `list_customer_ids`, `get_customer_oltp`, `get_customer_star`. Those

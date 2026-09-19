@@ -1,0 +1,60 @@
+name: Populate next N months of dims and facts
+
+on:
+  workflow_dispatch:
+    inputs:
+      months:
+        description: Months to load from the last tracker date (1-12). Uses whatever OLTP remains if less.
+        required: true
+        default: "3"
+        type: choice
+        options:
+          - "1"
+          - "2"
+          - "3"
+          - "4"
+          - "5"
+          - "6"
+          - "7"
+          - "8"
+          - "9"
+          - "10"
+          - "11"
+          - "12"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: databricks-etl-next-months
+  cancel-in-progress: false
+
+jobs:
+  etl-next-months:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      DATABRICKS_ACCOUNT_ID: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
+      DATABRICKS_ACCOUNT_HOST: ${{ secrets.DATABRICKS_ACCOUNT_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_WORKSPACE_NAME: ${{ secrets.DATABRICKS_WORKSPACE_NAME }}
+      DATABRICKS_AWS_REGION: ${{ secrets.DATABRICKS_AWS_REGION }}
+      DATABRICKS_WORKSPACE_ADMIN_EMAILS: ${{ secrets.DATABRICKS_WORKSPACE_ADMIN_EMAILS }}
+      DATABRICKS_WAREHOUSE_NAME: ${{ secrets.DATABRICKS_WAREHOUSE_NAME }}
+      DATABRICKS_CATALOG: ${{ secrets.DATABRICKS_CATALOG }}
+      DATABRICKS_SCHEMA: ${{ secrets.DATABRICKS_SCHEMA }}
+      DATABRICKS_OLTP_SCHEMA: ${{ secrets.DATABRICKS_OLTP_SCHEMA }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Databricks env
+        uses: ./.github/actions/setup-databricks
+      - name: Deploy Spark jobs
+        run: uv run genie-ontology deploy
+      - name: ETL next months
+        run: >
+          uv run genie-ontology run etl_next_months --as-job
+          --months "${{ inputs.months }}"

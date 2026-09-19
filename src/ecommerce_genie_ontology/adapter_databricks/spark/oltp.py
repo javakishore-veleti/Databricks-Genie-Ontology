@@ -202,6 +202,9 @@ def generate_historical(
     shipments.write.mode("overwrite").saveAsTable(f"{fq}.customer_order_shipment")
 
     _write_entity_links(spark, fq)
+    from ecommerce_genie_ontology.adapter_databricks.spark.ingest import snapshot_oltp
+
+    snapshot_oltp(spark, catalog, oltp_schema, pipeline="oltp_historical")
     return {
         "customers": n_customers,
         "addresses": n_customers * 3,
