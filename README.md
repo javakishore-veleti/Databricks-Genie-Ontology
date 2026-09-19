@@ -30,13 +30,27 @@ compared with legitimate ones. Amount, sudden loss of balance, and type of
 movement are the high-ranking signals; agents should use them for risk
 analysis without dumping ten years of rows into a model.
 
+### Customer Data Capacity Considered
+
+Capacity is planned from **18 September 2016** through **18 September 2026**
+(ten years ending 18 September 2026). Agents never load this volume; they
+hydrate one customer at a time.
+
+| Item | Planned | Notes |
+|---|---|---|
+| Customers | 100,000 | One person is one customer |
+| Accounts per customer | 4 | Checking, certificate of deposit, credit card, brokerage |
+| Transactions per customer per year | 30,000 | Sales lines and funds-movement postings in that year |
+| Years of history | 10 | End date 18 September 2026; start 18 September 2016 |
+| Transactions per customer | 300,000 | 30,000 × 10 years |
+| Postings in the warehouse | about 30 billion | 100,000 × 300,000 |
+
 ### OLTP and Star Schema Models
 
 Sales and funds movement live in OLTP (`customer`, `customer_address`,
 `customer_order`, `customer_order_line`, `customer_order_shipment`) plus
-conformed dimensions and facts. Design volume is **100,000 customers**,
-**30,000 transactions per customer per year**, and **10 years** of history
-(**300,000 transactions per customer**). Agents are **customer-scoped**: MCP
+conformed dimensions and facts. Design volume is the capacity above.
+Agents are **customer-scoped**: MCP
 returns only `customer_id` values for a date range, then each agent loops
 (parallel or sequential) and hydrates **one customer** from star schema and/or
 OLTP. Databricks **Genie** agents run in the workspace. **Non-Genie** agents
@@ -58,13 +72,13 @@ without each team rewriting joins on raw OLTP.
 ### The Architecture behind MCP
 
 The architecture behind MCP is what makes agentic AI fraud detection safe at
-this volume. MCP does not scan 300,000 postings per customer. It lists
-`customer_id` values for a window, then hydrates one customer from star facts
-(baselines, peers, type mix) or OLTP (the supporting orders and postings).
-Genie agents read the same warehouse in the workspace. Portal agents
-(LangGraph, Google ADK, AWS Strands) call MCP. Both paths share conformed
-keys, so a velocity flag and a wire-outflow flag can be explained from the
-same customer and date.
+this volume. Other teams build **functional agents** — amount vs baseline,
+sudden drain, type of movement, shared-address network, changing behavior,
+rare events. MCP does not scan 300,000 postings per customer. It answers
+those questions for one customer at a time from star facts (baselines, peers,
+type mix) or OLTP (the supporting orders and postings). Genie agents and
+portal agents call the same warehouse, so a velocity flag and a wire-outflow
+flag can be explained from the same customer and date.
 
 Sales fraud and funds-movement fraud share `dim_customer` and `dim_date` only.
 Do not hang wire transfers or card dues off `customer_order` / `fact_sales`.
@@ -75,6 +89,16 @@ before/after.
 ![Customer, transaction types, and banks](docs/images/customer-banks-transactions.png)
 
 ![Business data architecture](docs/images/business-data-architecture.png)
+
+| Fraud idea | Functional agent |
+|---|---|
+| Amount + sudden origin-balance drain | Amount vs baseline — spend far above this customer's recent median; sudden drain |
+| Transaction type as a signal | Transaction-type — wire, cash, card, cancel, expedite, promo |
+| Graph / network features | Shared-address network — hops on `entity_link` |
+| Behavioral vs transactional vs network | Velocity, returns, geo, and first-order specialists |
+| Adaptive / changing fraud | Changing-behavior — realtime CDC windows, not a static snapshot |
+| Rare events + fewer false positives | Rare-event — peer baselines, not a blanket dollar threshold |
+| Feature importance / explainability | Explain the why — amount, velocity, address; not a black box |
 
 **Sales star** — each row is one sales line (one product on one order).
 
