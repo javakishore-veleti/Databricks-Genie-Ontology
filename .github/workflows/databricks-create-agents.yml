@@ -1,20 +1,19 @@
-name: Create Databricks stack
+name: Create Genie agents
 
 on:
   workflow_dispatch:
 
 permissions:
   contents: read
-  actions: write
 
 concurrency:
-  group: databricks-create
+  group: databricks-create-agents
   cancel-in-progress: false
 
 jobs:
-  create:
+  create-agents:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 45
     env:
       DATABRICKS_ACCOUNT_ID: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
       DATABRICKS_ACCOUNT_HOST: ${{ secrets.DATABRICKS_ACCOUNT_HOST }}
@@ -34,19 +33,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Databricks env
         uses: ./.github/actions/setup-databricks
-      - name: Create workspace
-        run: uv run genie-ontology run provision_workspace
-      - name: Create warehouse
-        run: uv run genie-ontology run provision_warehouse
-      - name: Create catalog
-        run: uv run genie-ontology run provision
-      - name: Deploy Spark jobs
+      - name: Deploy jobs
         run: uv run genie-ontology deploy
-      - name: Create Genie agents
+      - name: Create Retail Analytics Genie and 10 fraud specialists
         run: uv run genie-ontology run create_agents --as-job
-      - name: Schedule destroy in 3 hours
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh workflow run databricks-schedule-destroy.yml --ref "${GITHUB_REF_NAME}"
-          echo "Queued Destroy Databricks stack in 3 hours. A later Create run cancels the previous timer."
