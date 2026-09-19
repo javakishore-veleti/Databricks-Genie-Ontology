@@ -517,12 +517,12 @@ Run fraud case 15 Impossible geo two regions one hour
 
 That is the first sample question on the space and the first checkbox on
 **02 - Fraud Agent - 10 - Fraud Geo Agent**. Type it in the chat (or check
-the box on that Action). Do not start from Retail Analytics for Case 15.
+the box on that GitHub Action). Do not start from Retail Analytics for Case 15.
 
 ### Fraud Geo Agent
 
 **What it is.** A Databricks Genie space titled **Fraud Geo Agent**. Step 02
-(or the Geo Action) creates it with `create_agents --agent-id geo`. It owns
+(or GitHub Action **02 - Fraud Agent - 10 - Fraud Geo Agent**) creates it with `create_agents --agent-id geo`. It owns
 only Case 15 — impossible geography: the same customer has two shipping
 regions within one hour. It answers questions; it does not run Spark load
 jobs and it does not call `mcp-ecommerce-oltp`.
@@ -537,7 +537,7 @@ jobs and it does not call `mcp-ecommerce-oltp`.
   `{CATALOG}.retail_oltp.*` and `{CATALOG}.retail_star.*` only. Genie does
   not search other catalogs or schemas.
 - `instructions.text_instructions`: Case 15 notes (overridable with
-  **system_prompt** on the Geo Action)
+  **system_prompt** on GitHub Action **02 - Fraud Agent - 10 - Fraud Geo Agent**)
 - `config.sample_questions`: the five starters below
 - Registry row: `{CATALOG}.retail_star._genie_agent_registry` (`title`,
   `space_id`, `warehouse_id`)
@@ -712,7 +712,7 @@ Cursor / Claude Desktop / Supervisor pointed at Genie MCP is path **B**.
 | Path A or B — who asked | Audit logs: Genie Agent events (ids and time, not SQL) |
 | Path B — which MCP **tool** ran | The **MCP client** transcript (Cursor / Claude / Supervisor tool calls). Databricks does not write `genie_ask` into Query History. |
 | Path B — Genie MCP HTTP | Client debug / proxy logs against `/api/2.0/mcp/genie/{SPACE_ID}` |
-| Step 05 / Geo Action ask job | GitHub Actions log: `STATUS`, `CONTENT`, printed SQL |
+| Step 05 / Fraud Geo GitHub Action ask job | GitHub Actions log: `STATUS`, `CONTENT`, printed SQL |
 | Space id for all of the above | `{CATALOG}.retail_star._genie_agent_registry` where `title = 'Fraud Geo Agent'` |
 | Our App tools (`get_customer_star`, …) | **Not this agent.** App logs at `https://{WORKSPACE_HOST}/apps/mcp-ecommerce-oltp` only after Playground → Tools → MCP Servers → `mcp-ecommerce-oltp` |
 | Pages / citations | Discover `https://{WORKSPACE_HOST}/search/discover` — only if the page shows **Published**. Otherwise they are not in the turn. |
