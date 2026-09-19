@@ -87,11 +87,22 @@ class AppsDao:
         state = str(compute.get("state") if isinstance(compute, dict) else compute or "")
         app_status = app.get("app_status")
         app_state = str(app_status.get("state") if isinstance(app_status, dict) else app_status or "")
-        if state.upper() in {"ACTIVE", "RUNNING"} or app_state.upper() in {"RUNNING", "APP_STARTED"}:
+        if state.upper() in {"ACTIVE", "RUNNING", "STARTING"} or app_state.upper() in {
+            "RUNNING",
+            "APP_STARTED",
+            "STARTING",
+        }:
             print(f"OK    app {MCP_APP_NAME} already {state or app_state}")
             return
-        self._session.workspace.api_client.do("POST", f"/api/2.0/apps/{MCP_APP_NAME}/start")
-        print(f"OK    start {MCP_APP_NAME}")
+        try:
+            self._session.workspace.api_client.do("POST", f"/api/2.0/apps/{MCP_APP_NAME}/start")
+            print(f"OK    start {MCP_APP_NAME}")
+        except Exception as exc:
+            text = str(exc).lower()
+            if "starting" in text or "already" in text or "running" in text:
+                print(f"OK    start skipped ({exc})")
+                return
+            raise
 
     def deploy(self, source_code_path: str) -> dict:
         body = {"source_code_path": source_code_path}
@@ -169,14 +180,17 @@ class AppsDao:
             return
         warehouse_id = self._session.warehouse_id
         try:
-            self._session.workspace.warehouses.update_permissions(
-                warehouse_id,
-                access_control_list=[
-                    {
-                        "service_principal_name": principal,
-                        "permission_level": "CAN_USE",
-                    }
-                ],
+            self._session.workspace.api_client.do(
+                "PATCH",
+                f"/api/2.0/permissions/sql/warehouses/{warehouse_id}",
+                body={
+                    "access_control_list": [
+                        {
+                            "service_principal_name": principal,
+                            "permission_level": "CAN_USE",
+                        }
+                    ]
+                },
             )
             print(f"OK    warehouse CAN_USE for {principal}")
         except Exception as exc:
