@@ -10,6 +10,8 @@ and its AI Agents.
 
 ## Business Context
 
+### Customer behavior
+
 Customer behavior is how a person buys, pays, ships, and moves money over
 time: orders and lines, the addresses they use, channel, status, and — once
 funds movement is in scope — wires, cash, book transfers, CDs, brokerage,
@@ -18,6 +20,8 @@ the baseline per customer: typical amount, velocity, counterparties, and
 whether a new address or a sudden outflow sits outside changing transaction
 behaviors.
 
+### Purpose
+
 The purpose of this context is fraud detection: pick out abnormal behaviors
 and rare fraud cases in real time, while keeping false alarms down. Fixed
 thresholds and rule-based checks miss identity theft and automated attacks,
@@ -25,6 +29,8 @@ and they raise false-positives when fraudulent transactions are extremely rare
 compared with legitimate ones. Amount, sudden loss of balance, and type of
 movement are the high-ranking signals; agents should use them for risk
 analysis without dumping ten years of rows into a model.
+
+### OLTP and Star Schema Models
 
 Sales and funds movement live in OLTP (`customer`, `customer_address`,
 `customer_order`, `customer_order_line`, `customer_order_shipment`) plus
@@ -40,11 +46,15 @@ tools stay honest.
 
 ## Business Data Architecture
 
+### DataWarehouse
+
 A data warehouse turns ten years of customer activity into a place agents and
 people can ask the same question and get the same answer. Facts hold measures
 at a stated grain. Dimensions hold the who, when, what, and where. That is
 what makes amount, velocity, segment, and type comparable across 100,000
 customers without each team rewriting joins on raw OLTP.
+
+### The Architecture behind MCP
 
 The architecture behind MCP is what makes agentic AI fraud detection safe at
 this volume. MCP does not scan 300,000 postings per customer. It lists
