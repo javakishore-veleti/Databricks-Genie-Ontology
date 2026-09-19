@@ -35,9 +35,15 @@ from ecommerce_genie_ontology.api.schemas import (
     OhRespResult,
     ChReq,
     ChRespResult,
+    AnCustomerReq,
+    AnIdReq,
+    AnInitReq,
+    AnListReq,
+    AnOutcomeReq,
 )
 from ecommerce_genie_ontology.common.constants.fraud_agents import FRAUD_AGENTS, case_names
 from ecommerce_genie_ontology.common.constants.fraud_cases import FRAUD_CASES
+from ecommerce_genie_ontology.mcp import tools as mcp_tools
 from ecommerce_genie_ontology.common.dtos.pipeline import (
     EcCtx,
     EcResp,
@@ -175,6 +181,14 @@ class OntologyRouter:
             methods=["POST"],
             response_model=FcRespResult,
         )
+        self.router.add_api_route("/fraud/analytics/initiate", self.initiate_fraud_analytics, methods=["POST"])
+        self.router.add_api_route("/fraud/analytics/get", self.get_analytics, methods=["POST"])
+        self.router.add_api_route("/fraud/analytics/customers", self.list_analytics_customers, methods=["POST"])
+        self.router.add_api_route("/fraud/analytics/customer", self.get_customer_analytics, methods=["POST"])
+        self.router.add_api_route("/fraud/analytics/customer/oltp", self.get_customer_oltp, methods=["POST"])
+        self.router.add_api_route("/fraud/analytics/customer/star", self.get_customer_star, methods=["POST"])
+        self.router.add_api_route("/fraud/analytics/outcome", self.record_customer_outcome, methods=["POST"])
+        self.router.add_api_route("/fraud/analytics/close", self.close_analytics, methods=["POST"])
 
     def list_workflows(self) -> LsRespResult:
         ctx = LsCtx(LsReq(), LsResp())
@@ -324,6 +338,67 @@ class OntologyRouter:
         except RuntimeError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return ChRespResult.of(ctx.resp)
+
+    def _analytics(self, fn, **kwargs):
+        try:
+            return fn(**kwargs)
+        except SystemExit as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    def initiate_fraud_analytics(self, req: AnInitReq) -> dict:
+        return self._analytics(
+            mcp_tools.initiate_fraud_analytics,
+            from_date=req.from_date,
+            to_date=req.to_date,
+            requesting_user=req.requesting_user,
+        )
+
+    def get_analytics(self, req: AnIdReq) -> dict:
+        return self._analytics(mcp_tools.get_analytics, analytics_id=req.analytics_id)
+
+    def list_analytics_customers(self, req: AnListReq) -> dict:
+        return self._analytics(
+            mcp_tools.list_analytics_customers,
+            analytics_id=req.analytics_id,
+            limit=req.limit,
+            offset=req.offset,
+            outcome=req.outcome,
+        )
+
+    def get_customer_analytics(self, req: AnCustomerReq) -> dict:
+        return self._analytics(
+            mcp_tools.get_customer_analytics,
+            analytics_id=req.analytics_id,
+            customer_id=req.customer_id,
+        )
+
+    def get_customer_oltp(self, req: AnCustomerReq) -> dict:
+        return self._analytics(
+            mcp_tools.get_customer_oltp,
+            analytics_id=req.analytics_id,
+            customer_id=req.customer_id,
+        )
+
+    def get_customer_star(self, req: AnCustomerReq) -> dict:
+        return self._analytics(
+            mcp_tools.get_customer_star,
+            analytics_id=req.analytics_id,
+            customer_id=req.customer_id,
+        )
+
+    def record_customer_outcome(self, req: AnOutcomeReq) -> dict:
+        return self._analytics(
+            mcp_tools.record_customer_outcome,
+            analytics_id=req.analytics_id,
+            customer_id=req.customer_id,
+            analytics_outcome=req.analytics_outcome,
+            analytics_log_info=req.analytics_log_info,
+        )
+
+    def close_analytics(self, req: AnIdReq) -> dict:
+        return self._analytics(mcp_tools.close_analytics, analytics_id=req.analytics_id)
 
     def run_fraud_case(self, req: FcReq) -> FcRespResult:
         ctx = FcCtx(req, FcResp())

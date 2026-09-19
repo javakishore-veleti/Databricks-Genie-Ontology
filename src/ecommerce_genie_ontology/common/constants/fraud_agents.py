@@ -13,6 +13,8 @@ SHARED_TABLES = (
     ("customer_order_shipment", "oltp", "Shipments and carriers"),
     ("customer_transaction", "oltp", "Funds-movement postings with type, amount, and balances"),
     ("entity_link", "oltp", "1-2 hop entity relationships for shared address"),
+    ("analytics_log", "oltp", "Fraud analytics session header"),
+    ("analytics_log_customer", "oltp", "Per-customer fraud outcome and counts"),
     ("dim_customer", "star", "Customer dimension"),
     ("dim_product", "star", "Product dimension"),
     ("dim_account", "star", "Customer accounts"),

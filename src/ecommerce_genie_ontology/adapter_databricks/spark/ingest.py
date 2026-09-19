@@ -25,6 +25,7 @@ OLTP_TABLES = (
     "customer_order_line",
     "customer_order_shipment",
     "customer_transaction",
+    "entity_link",
 )
 STAR_TABLES = ("fact_sales", "fact_returns", "fact_inventory", "fact_transaction")
 
@@ -107,8 +108,16 @@ def snapshot_tables(
         ending = _count(spark, fq, name)
         prior = existing.get(name)
         starting = int(prior["rows_inserted"]) if prior else 0
-        first = start_date or (prior["start_date"] if prior else None) or CAPACITY_START
-        last = end_date or (prior["end_date"] if prior else None) or first
+        prior_start = prior["start_date"] if prior else None
+        prior_end = prior["end_date"] if prior else None
+        if prior_start and start_date:
+            first = min(prior_start, start_date)
+        else:
+            first = start_date or prior_start or CAPACITY_START
+        if prior_end and end_date:
+            last = max(prior_end, end_date)
+        else:
+            last = end_date or prior_end or first
         track_rows.append((name, name, ending, first, last, last.year, now))
         log_rows.append(
             (
@@ -379,6 +388,7 @@ def generate_next_oltp(spark, catalog: str, oltp_schema: str, row_count: int = 1
         )
     )
     postings.write.mode("append").saveAsTable(f"{fq}.customer_transaction")
+    spark_oltp._write_entity_links(spark, fq)
     snapshot_tables(
         spark,
         fq,
@@ -413,12 +423,12 @@ def etl_next_months(
     oltp_schema: str,
     months: int = 3,
 ) -> dict:
+    from ecommerce_genie_ontology.adapter_databricks.spark import etl as spark_etl
     from pyspark.sql import functions as F
 
     months = max(1, min(12, int(months)))
     oltp = spark_oltp.ensure_oltp_schema(spark, catalog, oltp_schema)
-    star = f"{catalog}.{star_schema}"
-    spark.sql(f"CREATE SCHEMA IF NOT EXISTS {star}")
+    star = spark_etl.ensure_star_schema(spark, catalog, star_schema)
     _ensure_tables(spark, oltp)
     started = datetime.utcnow()
 
@@ -465,67 +475,26 @@ def etl_next_months(
 
     lo = int(window_start.strftime("%Y%m%d"))
     hi = int(window_end.strftime("%Y%m%d"))
+    in_window = (F.col("date_key") >= lo) & (F.col("date_key") <= hi)
     _refresh_dims(spark, catalog, star_schema, oltp_schema)
     orders = spark.table(f"{oltp}.customer_order")
     lines = spark.table(f"{oltp}.customer_order_line")
-    sales = (
-        lines.join(orders, "order_id")
-        .withColumn("date_key", F.date_format("order_ts", "yyyyMMdd").cast("int"))
-        .filter((F.col("date_key") >= lo) & (F.col("date_key") <= hi))
-        .withColumn("product_key", F.regexp_replace("sku", "SKU-", "").cast("int"))
-        .withColumn("customer_key", F.regexp_replace("customer_id", "C", "").cast("int"))
-        .withColumn("store_key", F.col("store_id"))
-        .withColumn("revenue", F.col("line_amount"))
-        .select(
-            F.abs(F.hash("order_line_id")).cast("bigint").alias("order_id"),
-            "date_key",
-            "product_key",
-            "customer_key",
-            "store_key",
-            "quantity",
-            "unit_price",
-            "revenue",
-        )
-    )
-    sales.write.mode("append").saveAsTable(f"{star}.fact_sales")
-    returns = (
-        orders.filter(F.col("status") == "cancelled")
-        .withColumn("date_key", F.date_format("order_ts", "yyyyMMdd").cast("int"))
-        .filter((F.col("date_key") >= lo) & (F.col("date_key") <= hi))
-        .select(
-            F.abs(F.hash("order_id")).cast("bigint").alias("return_id"),
-            F.abs(F.hash(F.concat(F.lit("ord"), F.col("order_id")))).cast("bigint").alias("order_id"),
-            "date_key",
-            F.regexp_replace("customer_id", "C", "").cast("int").alias("customer_key"),
-            F.col("order_amount").alias("return_amount"),
-        )
-    )
-    returns.write.mode("append").saveAsTable(f"{star}.fact_returns")
+    spark_etl.sales_facts(lines, orders).filter(in_window).write.mode("append").saveAsTable(f"{star}.fact_sales")
+    spark_etl.return_facts(orders, lines).filter(in_window).write.mode("append").saveAsTable(f"{star}.fact_returns")
+    snapshot = date(window_end.year, window_end.month, 1)
+    while snapshot <= window_end:
+        spark_etl.inventory_facts(
+            spark.table(f"{star}.dim_product"),
+            spark.table(f"{star}.dim_store"),
+            snapshot,
+        ).write.mode("append").saveAsTable(f"{star}.fact_inventory")
+        snapshot = add_months(snapshot, 1)
     if spark.catalog.tableExists(f"{oltp}.customer_transaction"):
-        types = spark.table(f"{star}.dim_transaction_type").select("type_key", "type_code")
-        cps = spark.table(f"{star}.dim_counterparty").select("counterparty_key", "counterparty_id")
-        txns = (
-            spark.table(f"{oltp}.customer_transaction")
-            .join(types, "type_code", "left")
-            .join(cps, "counterparty_id", "left")
-            .withColumn("date_key", F.date_format("txn_ts", "yyyyMMdd").cast("int"))
-            .filter((F.col("date_key") >= lo) & (F.col("date_key") <= hi))
-            .withColumn("customer_key", F.regexp_replace("customer_id", "C", "").cast("int"))
-            .withColumn("acct_n", F.regexp_extract("account_id", r"ACCT(\d+)$", 1).cast("int"))
-            .withColumn("account_key", F.col("customer_key") * len(ACCOUNT_PRODUCTS) + F.col("acct_n"))
-            .select(
-                "transaction_id",
-                "date_key",
-                "customer_key",
-                "account_key",
-                "type_key",
-                "counterparty_key",
-                "amount",
-                "balance_before",
-                "balance_after",
-            )
-        )
-        txns.write.mode("append").saveAsTable(f"{star}.fact_transaction")
+        spark_etl.transaction_facts(
+            spark.table(f"{oltp}.customer_transaction"),
+            spark.table(f"{star}.dim_transaction_type").select("type_key", "type_code"),
+            spark.table(f"{star}.dim_counterparty").select("counterparty_key", "counterparty_id"),
+        ).filter(in_window).write.mode("append").saveAsTable(f"{star}.fact_transaction")
 
     snapshot_tables(
         spark,

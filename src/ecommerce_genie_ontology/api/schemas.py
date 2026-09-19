@@ -36,6 +36,13 @@ from ecommerce_genie_ontology.common.dtos.pipeline import (
     OhRespResult,
 )
 from ecommerce_genie_ontology.common.dtos.chat import ChReq, ChRespResult
+from ecommerce_genie_ontology.common.dtos.analytics import (
+    AnCustomerReq,
+    AnIdReq,
+    AnInitReq,
+    AnListReq,
+    AnOutcomeReq,
+)
 
 __all__ = [
     "DpReq",
@@ -71,4 +78,9 @@ __all__ = [
     "FcRespResult",
     "ChReq",
     "ChRespResult",
+    "AnInitReq",
+    "AnIdReq",
+    "AnListReq",
+    "AnCustomerReq",
+    "AnOutcomeReq",
 ]

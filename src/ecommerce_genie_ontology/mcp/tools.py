@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ecommerce_genie_ontology.adapter_databricks.spark import analytics as analytics_session
 from ecommerce_genie_ontology.common.constants.fraud_agents import FRAUD_AGENTS, agent_by_id, case_names
 from ecommerce_genie_ontology.common.constants.fraud_cases import FRAUD_CASES
 from ecommerce_genie_ontology.common.dtos.pipeline import (
@@ -177,6 +178,104 @@ def etl_star_cdc(as_job: bool = True) -> dict:
     ctx = EcCtx(EcReq(as_job=as_job), EcResp())
     _runner().etl_cdc(ctx)
     return {"rows": ctx.resp.rows, "status": ctx.resp.status, "message": ctx.resp.message}
+
+
+def _analytics_args() -> dict:
+    session = _session()
+    return {
+        "catalog": session.catalog,
+        "oltp_schema": session.context.oltp_schema,
+        "star_schema": session.schema_name,
+    }
+
+
+def initiate_fraud_analytics(from_date: str, to_date: str, requesting_user: str = "mcp") -> dict:
+    """Open a fraud session. Server finds customer IDs and writes counts. Does not return the ID list."""
+    return analytics_session.initiate(
+        _sql().execute,
+        **_analytics_args(),
+        from_date=from_date,
+        to_date=to_date,
+        requesting_user=requesting_user,
+    )
+
+
+def get_analytics(analytics_id: str) -> dict:
+    """Return the analytics_log header and how many customers are still pending."""
+    return analytics_session.get_analytics(_sql().execute, **_analytics_args(), analytics_id=analytics_id)
+
+
+def list_analytics_customers(
+    analytics_id: str,
+    limit: int = 20,
+    offset: int = 0,
+    outcome: str = "",
+) -> dict:
+    """Page customers in a session (max 50). Includes counts and outcome, not a raw ID dump."""
+    return analytics_session.list_analytics_customers(
+        _sql().execute,
+        **_analytics_args(),
+        analytics_id=analytics_id,
+        limit=limit,
+        offset=offset,
+        outcome=outcome,
+    )
+
+
+def get_customer_oltp(analytics_id: str, customer_id: str) -> dict:
+    """At most 25 orders and 25 postings for one customer in the session date range."""
+    return analytics_session.get_customer_oltp(
+        _sql().execute,
+        **_analytics_args(),
+        analytics_id=analytics_id,
+        customer_id=customer_id,
+    )
+
+
+def get_customer_star(analytics_id: str, customer_id: str) -> dict:
+    """At most 25 sales facts and 25 posting facts for one customer in the session window."""
+    return analytics_session.get_customer_star(
+        _sql().execute,
+        **_analytics_args(),
+        analytics_id=analytics_id,
+        customer_id=customer_id,
+    )
+
+
+def get_customer_analytics(analytics_id: str, customer_id: str) -> dict:
+    """One customer row: counts plus at most 50 evidence rows. Then record_customer_outcome."""
+    return analytics_session.get_customer_analytics(
+        _sql().execute,
+        **_analytics_args(),
+        analytics_id=analytics_id,
+        customer_id=customer_id,
+    )
+
+
+def record_customer_outcome(
+    analytics_id: str,
+    customer_id: str,
+    analytics_outcome: str,
+    analytics_log_info: str = "{}",
+) -> dict:
+    """Write fraud_found or not_found plus JSON why for one customer."""
+    return analytics_session.record_customer_outcome(
+        _sql().execute,
+        **_analytics_args(),
+        analytics_id=analytics_id,
+        customer_id=customer_id,
+        analytics_outcome=analytics_outcome,
+        analytics_log_info=analytics_log_info,
+    )
+
+
+def close_analytics(analytics_id: str) -> dict:
+    """Mark the analytics session Completed."""
+    return analytics_session.close_analytics(
+        _sql().execute,
+        **_analytics_args(),
+        analytics_id=analytics_id,
+    )
 
 
 def query_dataset(sql: str) -> dict:

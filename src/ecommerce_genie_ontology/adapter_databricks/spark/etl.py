@@ -6,18 +6,106 @@ from ecommerce_genie_ontology.common.constants.schema_ddl import (
     dim_counterparty_seed,
     dim_transaction_type_seed,
     funds_star_statements,
+    sales_star_statements,
 )
 from ecommerce_genie_ontology.common.constants.transaction_types import ACCOUNT_PRODUCTS
+
+
+def ensure_star_schema(spark, catalog: str, star_schema: str) -> str:
+    star = f"{catalog}.{star_schema}"
+    spark.sql(f"CREATE SCHEMA IF NOT EXISTS {star}")
+    for sql in sales_star_statements(star):
+        spark.sql(sql)
+    for sql in funds_star_statements(star):
+        spark.sql(sql)
+    return star
+
+
+def sales_facts(lines, orders):
+    from pyspark.sql import functions as F
+
+    return (
+        lines.join(orders, "order_id")
+        .withColumn("date_key", F.date_format("order_ts", "yyyyMMdd").cast("int"))
+        .withColumn("product_key", F.regexp_replace("sku", "SKU-", "").cast("int"))
+        .withColumn("customer_key", F.regexp_replace("customer_id", "C", "").cast("int"))
+        .withColumn("store_key", F.col("store_id"))
+        .withColumn("revenue", F.col("line_amount"))
+        .select(
+            F.abs(F.hash("order_line_id")).cast("bigint").alias("order_id"),
+            "date_key",
+            "product_key",
+            "customer_key",
+            "store_key",
+            "quantity",
+            "unit_price",
+            "revenue",
+        )
+    )
+
+
+def return_facts(orders, lines):
+    from pyspark.sql import functions as F
+
+    return (
+        orders.filter(F.col("status") == "cancelled")
+        .join(lines, "order_id")
+        .withColumn("date_key", F.date_format("order_ts", "yyyyMMdd").cast("int"))
+        .select(
+            F.abs(F.hash(F.concat(F.lit("ret"), F.col("order_line_id")))).cast("bigint").alias("return_id"),
+            F.abs(F.hash("order_line_id")).cast("bigint").alias("order_id"),
+            "date_key",
+            F.regexp_replace("sku", "SKU-", "").cast("int").alias("product_key"),
+            F.regexp_replace("customer_id", "C", "").cast("int").alias("customer_key"),
+            F.col("quantity"),
+            F.col("line_amount").alias("return_amount"),
+            F.lit("cancelled").alias("return_reason"),
+        )
+    )
+
+
+def inventory_facts(products, stores, snapshot_date: date):
+    from pyspark.sql import functions as F
+
+    date_key = int(snapshot_date.strftime("%Y%m%d"))
+    return products.select("product_key").crossJoin(stores.select("store_key")).select(
+        F.lit(date_key).alias("snapshot_date_key"),
+        "product_key",
+        "store_key",
+        F.lit(1000).cast("int").alias("stock_on_hand"),
+        F.lit(50).cast("int").alias("stock_received"),
+    )
+
+
+def transaction_facts(txns, types, counterparties):
+    from pyspark.sql import functions as F
+
+    return (
+        txns.join(types, "type_code", "left")
+        .join(counterparties, "counterparty_id", "left")
+        .withColumn("date_key", F.date_format("txn_ts", "yyyyMMdd").cast("int"))
+        .withColumn("customer_key", F.regexp_replace("customer_id", "C", "").cast("int"))
+        .withColumn("acct_n", F.regexp_extract("account_id", r"ACCT(\d+)$", 1).cast("int"))
+        .withColumn("account_key", F.col("customer_key") * len(ACCOUNT_PRODUCTS) + F.col("acct_n"))
+        .select(
+            "transaction_id",
+            "date_key",
+            "customer_key",
+            "account_key",
+            "type_key",
+            "counterparty_key",
+            "amount",
+            "balance_before",
+            "balance_after",
+        )
+    )
 
 
 def refresh_star_dims(spark, catalog: str, star_schema: str, oltp_schema: str) -> None:
     from pyspark.sql import functions as F
 
     oltp = f"{catalog}.{oltp_schema}"
-    star = f"{catalog}.{star_schema}"
-    spark.sql(f"CREATE SCHEMA IF NOT EXISTS {star}")
-    for sql in funds_star_statements(star):
-        spark.sql(sql)
+    star = ensure_star_schema(spark, catalog, star_schema)
     spark.sql(dim_transaction_type_seed(star))
     spark.sql(dim_counterparty_seed(star))
 
@@ -93,75 +181,25 @@ def refresh_star_dims(spark, catalog: str, star_schema: str, oltp_schema: str) -
 
 
 def etl_historical(spark, catalog: str, star_schema: str, oltp_schema: str) -> None:
-    from pyspark.sql import functions as F
-
     refresh_star_dims(spark, catalog, star_schema, oltp_schema)
     oltp = f"{catalog}.{oltp_schema}"
     star = f"{catalog}.{star_schema}"
     orders = spark.table(f"{oltp}.customer_order")
     lines = spark.table(f"{oltp}.customer_order_line")
-    facts = (
-        lines.join(orders, "order_id")
-        .withColumn("date_key", F.date_format("order_ts", "yyyyMMdd").cast("int"))
-        .withColumn("product_key", F.regexp_replace("sku", "SKU-", "").cast("int"))
-        .withColumn("customer_key", F.regexp_replace("customer_id", "C", "").cast("int"))
-        .withColumn("store_key", F.col("store_id"))
-        .withColumn("revenue", F.col("line_amount"))
-        .select(
-            F.abs(F.hash("order_line_id")).cast("bigint").alias("order_id"),
-            "date_key",
-            "product_key",
-            "customer_key",
-            "store_key",
-            "quantity",
-            "unit_price",
-            "revenue",
-        )
-    )
-    facts.write.mode("overwrite").saveAsTable(f"{star}.fact_sales")
-    returns = (
-        orders.filter(F.col("status") == "cancelled")
-        .select(
-            F.abs(F.hash("order_id")).cast("bigint").alias("return_id"),
-            F.abs(F.hash(F.concat(F.lit("ord"), F.col("order_id")))).cast("bigint").alias("order_id"),
-            F.regexp_replace("customer_id", "C", "").cast("int").alias("customer_key"),
-            F.col("order_amount").alias("return_amount"),
-        )
-    )
-    returns.write.mode("overwrite").saveAsTable(f"{star}.fact_returns")
-    inventory = products.select(
-        F.lit(int(date.today().strftime("%Y%m%d"))).alias("snapshot_date_key"),
-        "product_key",
-        F.lit(1).cast("int").alias("store_key"),
-        F.lit(1000).cast("int").alias("stock_on_hand"),
-        F.lit(50).cast("int").alias("stock_received"),
-    )
-    inventory.write.mode("overwrite").saveAsTable(f"{star}.fact_inventory")
+    sales_facts(lines, orders).write.mode("overwrite").saveAsTable(f"{star}.fact_sales")
+    return_facts(orders, lines).write.mode("overwrite").saveAsTable(f"{star}.fact_returns")
+    inventory_facts(
+        spark.table(f"{star}.dim_product"),
+        spark.table(f"{star}.dim_store"),
+        date.today(),
+    ).write.mode("overwrite").saveAsTable(f"{star}.fact_inventory")
 
     if spark.catalog.tableExists(f"{oltp}.customer_transaction"):
-        types = spark.table(f"{star}.dim_transaction_type").select("type_key", "type_code")
-        cps = spark.table(f"{star}.dim_counterparty").select("counterparty_key", "counterparty_id")
-        facts_txn = (
-            spark.table(f"{oltp}.customer_transaction")
-            .join(types, "type_code", "left")
-            .join(cps, "counterparty_id", "left")
-            .withColumn("date_key", F.date_format("txn_ts", "yyyyMMdd").cast("int"))
-            .withColumn("customer_key", F.regexp_replace("customer_id", "C", "").cast("int"))
-            .withColumn("acct_n", F.regexp_extract("account_id", r"ACCT(\d+)$", 1).cast("int"))
-            .withColumn("account_key", F.col("customer_key") * len(ACCOUNT_PRODUCTS) + F.col("acct_n"))
-            .select(
-                "transaction_id",
-                "date_key",
-                "customer_key",
-                "account_key",
-                "type_key",
-                "counterparty_key",
-                "amount",
-                "balance_before",
-                "balance_after",
-            )
-        )
-        facts_txn.write.mode("overwrite").saveAsTable(f"{star}.fact_transaction")
+        transaction_facts(
+            spark.table(f"{oltp}.customer_transaction"),
+            spark.table(f"{star}.dim_transaction_type").select("type_key", "type_code"),
+            spark.table(f"{star}.dim_counterparty").select("counterparty_key", "counterparty_id"),
+        ).write.mode("overwrite").saveAsTable(f"{star}.fact_transaction")
     spark.sql(
         f"""
 CREATE OR REPLACE TABLE {star}._etl_run (

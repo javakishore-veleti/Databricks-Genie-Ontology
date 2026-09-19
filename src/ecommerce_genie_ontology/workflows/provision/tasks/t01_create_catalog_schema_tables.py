@@ -10,6 +10,7 @@ from ecommerce_genie_ontology.common.constants.schema_ddl import (
     dim_transaction_type_seed,
     funds_star_statements,
     oltp_statements,
+    sales_star_statements,
 )
 from ecommerce_genie_ontology.common.interfaces.provision import ProvisionWorkspaceFacade
 
@@ -43,106 +44,14 @@ COMMENT 'Star schema: sales, returns, inventory, and funds-movement facts with c
     )
     for statement in oltp_statements(facade.fq_oltp):
         facade.sql(statement)
+    for statement in sales_star_statements(fq):
+        facade.sql(statement)
     for statement in funds_star_statements(fq):
         facade.sql(statement)
     facade.sql(dim_transaction_type_seed(fq))
     facade.sql(dim_counterparty_seed(fq))
     facade.sql(f"USE CATALOG {facade.catalog}")
     facade.sql(f"USE SCHEMA {facade.schema_name}")
-
-    facade.sql(
-        f"""
-CREATE OR REPLACE TABLE {fq}.dim_date (
-  date_key      INT     NOT NULL COMMENT 'Surrogate key, YYYYMMDD integer',
-  calendar_date DATE    NOT NULL COMMENT 'Calendar date',
-  year          INT              COMMENT 'Calendar year',
-  quarter       INT              COMMENT 'Calendar quarter (1-4)',
-  month         INT              COMMENT 'Calendar month number (1-12)',
-  month_name    STRING           COMMENT 'Month name, e.g. January',
-  day_of_week   STRING           COMMENT 'Day of week name, e.g. Monday',
-  is_weekend    BOOLEAN          COMMENT 'True if the date falls on Saturday or Sunday'
-)
-COMMENT 'Date dimension, one row per calendar day. Used to conform all fact tables to a shared calendar.'
-"""
-    )
-    facade.sql(
-        f"""
-CREATE OR REPLACE TABLE {fq}.dim_product (
-  product_key  INT            NOT NULL COMMENT 'Surrogate key for product',
-  sku          STRING         NOT NULL COMMENT 'Business key / stock keeping unit',
-  product_name STRING                  COMMENT 'Product display name',
-  category     STRING                  COMMENT 'Merchandising category, e.g. Electronics, Apparel',
-  brand        STRING                  COMMENT 'Brand name',
-  unit_cost    DECIMAL(10,2)           COMMENT 'Wholesale unit cost in USD'
-)
-COMMENT 'Product dimension.'
-"""
-    )
-    facade.sql(
-        f"""
-CREATE OR REPLACE TABLE {fq}.dim_customer (
-  customer_key  INT    NOT NULL COMMENT 'Surrogate key for customer',
-  customer_name STRING          COMMENT 'Customer display name',
-  segment       STRING          COMMENT 'Customer segment: Consumer, Small Business, or Enterprise',
-  region        STRING          COMMENT 'Sales region the customer belongs to',
-  signup_date   DATE            COMMENT 'Date the customer first registered'
-)
-COMMENT 'Customer dimension.'
-"""
-    )
-    facade.sql(
-        f"""
-CREATE OR REPLACE TABLE {fq}.dim_store (
-  store_key  INT    NOT NULL COMMENT 'Surrogate key for store / sales channel',
-  store_name STRING          COMMENT 'Store or channel display name',
-  region     STRING          COMMENT 'Region the store operates in',
-  channel    STRING          COMMENT 'Sales channel: Online or In-Store'
-)
-COMMENT 'Store / sales channel dimension.'
-"""
-    )
-    facade.sql(
-        f"""
-CREATE OR REPLACE TABLE {fq}.fact_sales (
-  order_id     BIGINT        NOT NULL COMMENT 'Order line surrogate key',
-  date_key     INT           NOT NULL COMMENT 'FK to dim_date.date_key, date the order was placed',
-  product_key  INT           NOT NULL COMMENT 'FK to dim_product.product_key',
-  customer_key INT           NOT NULL COMMENT 'FK to dim_customer.customer_key',
-  store_key    INT           NOT NULL COMMENT 'FK to dim_store.store_key',
-  quantity     INT                    COMMENT 'Units sold on this order line',
-  unit_price   DECIMAL(10,2)          COMMENT 'Realized selling price per unit, in USD',
-  revenue      DECIMAL(12,2)          COMMENT 'quantity * unit_price - gross revenue in USD for this line'
-)
-COMMENT 'Sales fact table, one row per order line item. Grain: one order line.'
-"""
-    )
-    facade.sql(
-        f"""
-CREATE OR REPLACE TABLE {fq}.fact_returns (
-  return_id     BIGINT        NOT NULL COMMENT 'Return line surrogate key',
-  order_id      BIGINT        NOT NULL COMMENT 'FK to fact_sales.order_id, the original order line being returned',
-  date_key      INT           NOT NULL COMMENT 'FK to dim_date.date_key, date of the return',
-  product_key   INT           NOT NULL COMMENT 'FK to dim_product.product_key',
-  customer_key  INT           NOT NULL COMMENT 'FK to dim_customer.customer_key',
-  quantity      INT                    COMMENT 'Units returned',
-  return_amount DECIMAL(12,2)          COMMENT 'Refunded amount in USD',
-  return_reason STRING                 COMMENT 'Reason code for the return, e.g. Defective, Wrong Item'
-)
-COMMENT 'Returns fact table, one row per returned order line. Grain: one return line.'
-"""
-    )
-    facade.sql(
-        f"""
-CREATE OR REPLACE TABLE {fq}.fact_inventory (
-  snapshot_date_key INT NOT NULL COMMENT 'FK to dim_date.date_key, inventory snapshot date (first of month)',
-  product_key       INT NOT NULL COMMENT 'FK to dim_product.product_key',
-  store_key         INT NOT NULL COMMENT 'FK to dim_store.store_key',
-  stock_on_hand     INT          COMMENT 'Units on hand at the snapshot date',
-  stock_received    INT          COMMENT 'Units received into stock since the prior snapshot'
-)
-COMMENT 'Monthly inventory snapshot fact table. Grain: one product/store/month.'
-"""
-    )
     print("Tables created.")
 
 
@@ -166,6 +75,11 @@ def _add_constraints(facade: ProvisionWorkspaceFacade) -> None:
         f"ALTER TABLE {fq}.fact_transaction ADD CONSTRAINT pk_fact_transaction PRIMARY KEY (transaction_id)",
         f"ALTER TABLE {oltp}.ingestion_tracker ADD CONSTRAINT pk_ingestion_tracker PRIMARY KEY (tracker_id)",
         f"ALTER TABLE {oltp}.ingestion_log ADD CONSTRAINT pk_ingestion_log PRIMARY KEY (log_id)",
+        f"ALTER TABLE {oltp}.analytics_log ADD CONSTRAINT pk_analytics_log PRIMARY KEY (analytics_id)",
+        (
+            f"ALTER TABLE {oltp}.analytics_log_customer ADD CONSTRAINT pk_analytics_log_customer "
+            "PRIMARY KEY (analytics_id, customer_id)"
+        ),
     ]
     fk_statements = [
         f"ALTER TABLE {fq}.fact_sales ADD CONSTRAINT fk_sales_date FOREIGN KEY (date_key) REFERENCES {fq}.dim_date (date_key)",

@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS {fq}._cdc_watermark (
 ) USING DELTA
 """,
         *ingest_statements(fq),
+        *analytics_statements(fq),
     ]
 
 
@@ -146,6 +147,127 @@ CREATE TABLE IF NOT EXISTS {fq}.ingestion_log (
   months INT,
   pipeline STRING,
   status STRING
+) USING DELTA
+""",
+    ]
+
+
+def sales_star_statements(fq: str) -> list[str]:
+    return [
+        f"""
+CREATE TABLE IF NOT EXISTS {fq}.dim_date (
+  date_key      INT     NOT NULL COMMENT 'Surrogate key, YYYYMMDD integer',
+  calendar_date DATE    NOT NULL COMMENT 'Calendar date',
+  year          INT              COMMENT 'Calendar year',
+  quarter       INT              COMMENT 'Calendar quarter (1-4)',
+  month         INT              COMMENT 'Calendar month number (1-12)',
+  month_name    STRING           COMMENT 'Month name, e.g. January',
+  day_of_week   STRING           COMMENT 'Day of week name, e.g. Monday',
+  is_weekend    BOOLEAN          COMMENT 'True if the date falls on Saturday or Sunday'
+)
+COMMENT 'Date dimension, one row per calendar day. Used to conform all fact tables to a shared calendar.'
+""",
+        f"""
+CREATE TABLE IF NOT EXISTS {fq}.dim_product (
+  product_key  INT            NOT NULL COMMENT 'Surrogate key for product',
+  sku          STRING         NOT NULL COMMENT 'Business key / stock keeping unit',
+  product_name STRING                  COMMENT 'Product display name',
+  category     STRING                  COMMENT 'Merchandising category, e.g. Electronics, Apparel',
+  brand        STRING                  COMMENT 'Brand name',
+  unit_cost    DECIMAL(10,2)           COMMENT 'Wholesale unit cost in USD'
+)
+COMMENT 'Product dimension.'
+""",
+        f"""
+CREATE TABLE IF NOT EXISTS {fq}.dim_customer (
+  customer_key  INT    NOT NULL COMMENT 'Surrogate key for customer',
+  customer_name STRING          COMMENT 'Customer display name',
+  segment       STRING          COMMENT 'Customer segment: Consumer, Small Business, or Enterprise',
+  region        STRING          COMMENT 'Sales region the customer belongs to',
+  signup_date   DATE            COMMENT 'Date the customer first registered'
+)
+COMMENT 'Customer dimension.'
+""",
+        f"""
+CREATE TABLE IF NOT EXISTS {fq}.dim_store (
+  store_key  INT    NOT NULL COMMENT 'Surrogate key for store / sales channel',
+  store_name STRING          COMMENT 'Store or channel display name',
+  region     STRING          COMMENT 'Region the store operates in',
+  channel    STRING          COMMENT 'Sales channel: Online or In-Store'
+)
+COMMENT 'Store / sales channel dimension.'
+""",
+        f"""
+CREATE TABLE IF NOT EXISTS {fq}.fact_sales (
+  order_id     BIGINT        NOT NULL COMMENT 'Order line surrogate key',
+  date_key     INT           NOT NULL COMMENT 'FK to dim_date.date_key, date the order was placed',
+  product_key  INT           NOT NULL COMMENT 'FK to dim_product.product_key',
+  customer_key INT           NOT NULL COMMENT 'FK to dim_customer.customer_key',
+  store_key    INT           NOT NULL COMMENT 'FK to dim_store.store_key',
+  quantity     INT                    COMMENT 'Units sold on this order line',
+  unit_price   DECIMAL(10,2)          COMMENT 'Realized selling price per unit, in USD',
+  revenue      DECIMAL(12,2)          COMMENT 'quantity * unit_price - gross revenue in USD for this line'
+)
+COMMENT 'Sales fact table, one row per order line item. Grain: one order line.'
+""",
+        f"""
+CREATE TABLE IF NOT EXISTS {fq}.fact_returns (
+  return_id     BIGINT        NOT NULL COMMENT 'Return line surrogate key',
+  order_id      BIGINT        NOT NULL COMMENT 'FK to fact_sales.order_id, the original order line being returned',
+  date_key      INT           NOT NULL COMMENT 'FK to dim_date.date_key, date of the return',
+  product_key   INT           NOT NULL COMMENT 'FK to dim_product.product_key',
+  customer_key  INT           NOT NULL COMMENT 'FK to dim_customer.customer_key',
+  quantity      INT                    COMMENT 'Units returned',
+  return_amount DECIMAL(12,2)          COMMENT 'Refunded amount in USD',
+  return_reason STRING                 COMMENT 'Reason code for the return, e.g. Defective, Wrong Item'
+)
+COMMENT 'Returns fact table, one row per returned order line. Grain: one return line.'
+""",
+        f"""
+CREATE TABLE IF NOT EXISTS {fq}.fact_inventory (
+  snapshot_date_key INT NOT NULL COMMENT 'FK to dim_date.date_key, inventory snapshot date (first of month)',
+  product_key       INT NOT NULL COMMENT 'FK to dim_product.product_key',
+  store_key         INT NOT NULL COMMENT 'FK to dim_store.store_key',
+  stock_on_hand     INT          COMMENT 'Units on hand at the snapshot date',
+  stock_received    INT          COMMENT 'Units received into stock since the prior snapshot'
+)
+COMMENT 'Monthly inventory snapshot fact table. Grain: one product/store/month.'
+""",
+    ]
+
+
+def analytics_statements(fq: str) -> list[str]:
+    return [
+        f"""
+CREATE TABLE IF NOT EXISTS {fq}.analytics_log (
+  analytics_id STRING NOT NULL,
+  requesting_user STRING,
+  customer_count BIGINT,
+  start_date DATE,
+  end_date DATE,
+  requested_at TIMESTAMP,
+  analytics_start_at TIMESTAMP,
+  analytics_end_at TIMESTAMP,
+  status STRING
+) USING DELTA
+""",
+        f"""
+CREATE TABLE IF NOT EXISTS {fq}.analytics_log_customer (
+  analytics_id STRING NOT NULL,
+  customer_id STRING NOT NULL,
+  order_count BIGINT,
+  order_line_count BIGINT,
+  shipment_count BIGINT,
+  posting_count BIGINT,
+  address_count BIGINT,
+  account_count BIGINT,
+  fact_sales_count BIGINT,
+  fact_returns_count BIGINT,
+  fact_inventory_count BIGINT,
+  fact_transaction_count BIGINT,
+  analytics_outcome STRING,
+  analytics_log_info STRING,
+  updated_at TIMESTAMP
 ) USING DELTA
 """,
     ]

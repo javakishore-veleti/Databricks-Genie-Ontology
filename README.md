@@ -8,6 +8,34 @@ Actions — no notebook import.
 All data management is currently managed in Databricks and Databricks Genie
 and its AI Agents.
 
+## Table of Contents
+
+- [Business Context](#business-context)
+  - [Customer behavior](#customer-behavior)
+  - [Purpose](#purpose)
+  - [Fraud Detection behavior](#fraud-detection-behavior)
+  - [Customer Data Capacity Considered](#customer-data-capacity-considered)
+  - [OLTP and Star Schema Models](#oltp-and-star-schema-models)
+- [Business Data Architecture](#business-data-architecture)
+  - [DataWarehouse](#datawarehouse)
+  - [The Architecture behind MCP](#the-architecture-behind-mcp)
+- [Prerequisites](#prerequisites)
+- [Setup](#setup)
+- [GitHub Actions (no local CLI)](#github-actions-no-local-cli)
+- [Run locally (uses .env, talks to Databricks APIs)](#run-locally-uses-env-talks-to-databricks-apis)
+- [Create the Databricks workspace](#create-the-databricks-workspace)
+- [Create the SQL warehouse](#create-the-sql-warehouse)
+- [Create the catalog, schema, and demo tables](#create-the-catalog-schema-and-demo-tables)
+- [Drop the catalog](#drop-the-catalog)
+- [HTTP interface](#http-interface)
+- [MCP tools](#mcp-tools)
+  - [MCP tools in Databricks Genie](#mcp-tools-in-databricks-genie)
+  - [MCP tools in this codebase](#mcp-tools-in-this-codebase)
+- [Fraud agents (inside `ecommerce_genie_ontology`)](#fraud-agents-inside-ecommerce_genie_ontology)
+  - [Context management and graph databases](#context-management-and-graph-databases)
+- [OLTP and CDC locally (uses .env, talks to Databricks Jobs)](#oltp-and-cdc-locally-uses-env-talks-to-databricks-jobs)
+- [Register and run Databricks Jobs](#register-and-run-databricks-jobs)
+
 ## Business Context
 
 ### Customer behavior
@@ -79,13 +107,12 @@ year** (about 300,000 postings) plus sales orders. Orders are also capped at
 Sales and funds movement live in OLTP (`customer`, `customer_address`,
 `customer_account`, `customer_order`, `customer_order_line`,
 `customer_order_shipment`, `customer_transaction`, `ingestion_tracker`,
-`ingestion_log`) plus conformed dimensions
+`ingestion_log`, `analytics_log`, `analytics_log_customer`) plus conformed dimensions
 and facts (`dim_account`, `dim_transaction_type`, `dim_counterparty`,
 `fact_transaction` with the sales stars). Design volume is the capacity above.
-Agents are **customer-scoped**: MCP
-returns only `customer_id` values for a date range, then each agent loops
-(parallel or sequential) and hydrates **one customer** from star schema and/or
-OLTP. Databricks **Genie** agents run in the workspace. **Non-Genie** agents
+Agents are **customer-scoped**: `initiate_fraud_analytics` keeps IDs on the
+server; the agent pages, hydrates **one customer**, and writes the outcome.
+Databricks **Genie** agents run in the workspace. **Non-Genie** agents
 (LangGraph, Google ADK, AWS Strands) come through the portal via FastAPI and
 MCP. The LangGraph and Google ADK packages are conformance clients so the MCP
 tools stay honest.
@@ -227,8 +254,8 @@ src/ecommerce_genie_ontology/
 | **generate_realtime** | `ecommerce-genie-ontology-generate-realtime` | Append 100–10,000 new OLTP orders for CDC |
 | **etl_historical** | `ecommerce-genie-ontology-etl-historical` | Overwrite star-schema dims/facts from OLTP |
 | **etl_cdc** | `ecommerce-genie-ontology-etl-cdc` | Apply Delta change feed into `fact_sales` |
-| **generate_next_oltp** | `ecommerce-genie-ontology-generate-next-oltp` | Append next 100,000 OLTP rows; update `ingestion_tracker` / `ingestion_log` |
-| **etl_next_months** | `ecommerce-genie-ontology-etl-next-months` | Append dims/facts for the next 1–12 months from the tracker |
+| **generate_next_oltp** | `ecommerce-genie-ontology-generate-next-oltp` | Append next 100,000 OLTP rows plus `entity_link`; update `ingestion_tracker` / `ingestion_log` |
+| **etl_next_months** | `ecommerce-genie-ontology-etl-next-months` | Append `fact_sales` / `fact_returns` / `fact_inventory` / `fact_transaction` for the next 1–12 months |
 
 Default generate is **200 customers**, **3 addresses**, **4 accounts**, **25,000 orders per customer per year**, **500 postings per customer per year**, **3 years** ending this month (about 15 million orders and 300,000 postings). That is per year, not per day. Dims/facts are rebuilt from those OLTP tables so they match. Do not set Generate to 100,000 × 30,000 × 10 — that is the design ceiling, not a GitHub Action.
 
@@ -261,17 +288,18 @@ uv sync
 
 Use **Actions → Run workflow**. Create starts a 3-hour timer; a later Create cancels the previous timer. Destroy can be run by hand any time before that. Pipeline workflows are also **manual** (`workflow_dispatch` only).
 
-1. **Create Databricks stack** — workspace, SQL warehouse, catalog `ecommerce_genie_ontology`
-2. **Generate Historical Data** — OLTP tables for N customers / years
-3. **Run ETL Star Schema - Historical Data** — overwrite dims/facts from OLTP
-4. **Generate Realtime Orders Data** — 100 / 250 / 500 / 1,000 / 2,500 / 5,000 / 10,000 orders; window `latest` / `last_2` / `last_3` / `all`
-5. **Run ETL Star Schema - CDC Data** — Delta CDF into `fact_sales`
-6. **Pipeline Historical OLTP and Star Schema** — steps 2 then 3
-7. **Pipeline Realtime Orders and CDC Star Schema** — steps 4 then 5
-8. **Populate next 100000 OLTP rows** — append one batch; writes `ingestion_tracker` / `ingestion_log`
-9. **Populate next N months of dims and facts** — PySpark star load for 1–12 months (default 3). If less OLTP remains, loads what is there and does not fail
-10. **Destroy Databricks stack in 3 hours** — queued automatically after Create
-11. **Destroy Databricks stack** — manual wipe (cancels the 3-hour timer)
+1. **Create Databricks stack** — workspace, SQL warehouse, catalog `ecommerce_genie_ontology`, then deploy Spark jobs
+2. **Populate next 100000 OLTP rows** — append one batch (orders, lines, shipments, postings, `entity_link`); writes `ingestion_tracker` / `ingestion_log`
+3. **Populate next N months of dims and facts** — PySpark star load for 1–12 months (default 3): `fact_sales`, `fact_returns`, `fact_inventory`, `fact_transaction`. If less OLTP remains, loads what is there and does not fail
+4. **Pipeline next 100000 OLTP and next N months star** — steps 2 then 3
+5. **Generate Historical Data** — lab OLTP dump for N customers / years (optional; not the 100k path)
+6. **Run ETL Star Schema - Historical Data** — overwrite dims/facts from OLTP
+7. **Generate Realtime Orders Data** — 100 / 250 / 500 / 1,000 / 2,500 / 5,000 / 10,000 orders; window `latest` / `last_2` / `last_3` / `all`
+8. **Run ETL Star Schema - CDC Data** — Delta CDF into `fact_sales`
+9. **Pipeline Historical OLTP and Star Schema** — steps 5 then 6
+10. **Pipeline Realtime Orders and CDC Star Schema** — steps 7 then 8
+11. **Destroy Databricks stack in 3 hours** — queued automatically after Create
+12. **Destroy Databricks stack** — manual wipe (cancels the 3-hour timer)
 
 Destroy drops the catalog, deletes the warehouse and workspace, then emails `CLEANUP_NOTIFY_EMAIL` that this codebase’s Databricks demo stack is gone and should not keep billing.
 
@@ -377,6 +405,14 @@ npm run ecommerce:api:run
 - `GET /api/v1/ontology/fraud/cases`
 - `POST /api/v1/ontology/fraud/run` body: `FcReq` (`case_id` `01`–`15`)
 - `GET /api/v1/ontology/fraud/agents`
+- `POST /api/v1/ontology/fraud/analytics/initiate` body: `AnInitReq`
+- `POST /api/v1/ontology/fraud/analytics/get` body: `AnIdReq`
+- `POST /api/v1/ontology/fraud/analytics/customers` body: `AnListReq`
+- `POST /api/v1/ontology/fraud/analytics/customer` body: `AnCustomerReq`
+- `POST /api/v1/ontology/fraud/analytics/customer/oltp` body: `AnCustomerReq`
+- `POST /api/v1/ontology/fraud/analytics/customer/star` body: `AnCustomerReq`
+- `POST /api/v1/ontology/fraud/analytics/outcome` body: `AnOutcomeReq`
+- `POST /api/v1/ontology/fraud/analytics/close` body: `AnIdReq`
 - `POST /api/v1/ontology/chat` body: `ChReq` (`backend` `langgraph` \| `google_adk` \| `genie`)
 
 Historical generate and ETL should run as Databricks jobs (`as_job: true`, the default) because 15 million orders need Spark. The local process only triggers the job.
@@ -450,6 +486,14 @@ Cursor / Claude Desktop:
 | `list_fraud_agents` | The 10 specialists and which cases each owns. |
 | `run_fraud_case` | Run one case (`01`–`15`). At most 50 evidence rows. |
 | `run_fraud_agent_cases` | Run every pack owned by one specialist. |
+| `initiate_fraud_analytics` | Date range in; server finds IDs; writes `analytics_log` + per-customer counts. |
+| `get_analytics` | Session header and pending customer count. |
+| `list_analytics_customers` | Page of customers (max 50) with counts and outcome. |
+| `get_customer_analytics` | One customer: counts + at most 50 evidence rows. |
+| `get_customer_oltp` | At most 25 orders and 25 postings for one customer. |
+| `get_customer_star` | At most 25 sales facts and 25 posting facts for one customer. |
+| `record_customer_outcome` | `fraud_found` or `not_found` plus JSON why. |
+| `close_analytics` | Status `Completed`. |
 | `query_dataset` | One `SELECT` or `WITH` against OLTP or star. Forced `LIMIT 50`. |
 
 **Load and ETL (operators; not on Genie)**
@@ -463,10 +507,8 @@ Cursor / Claude Desktop:
 | `generate_next_oltp` | Next 100,000 OLTP rows. Writes `ingestion_tracker` and `ingestion_log`. |
 | `etl_next_months` | Next N months of dims/facts (1–12). No error if less OLTP remains. |
 
-Customer-first contract (same warehouse; session, not an ID dump):
-`initiate_fraud_analytics`, `get_analytics`, `list_analytics_customers`,
-`get_customer_analytics`, `record_customer_outcome`, `close_analytics`.
-Those belong on this server, not on Genie.
+Customer-first contract is on this server, not Genie: open a session, page
+customers, hydrate one customer, write the outcome, then close.
 
 ## Fraud agents (inside `ecommerce_genie_ontology`)
 

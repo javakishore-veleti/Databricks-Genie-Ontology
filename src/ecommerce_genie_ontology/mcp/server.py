@@ -19,7 +19,9 @@ mcp = MCPServer(
     "ecommerce-oltp-mcp",
     instructions=(
         "Operational tools for ecommerce OLTP generation, CDC star-schema ETL, "
-        "and 15 fraud evidence packs / 10 fraud specialists. Do not load full tables. "
+        "fraud analytics sessions, and 15 evidence packs / 10 specialists. "
+        "Use initiate_fraud_analytics, then page customers, hydrate one customer, "
+        "record_customer_outcome, and close_analytics. Do not load full tables. "
         "Analytics NL questions belong on Databricks Genie MCP."
     ),
 )
@@ -28,6 +30,14 @@ mcp.tool()(mcp_tools.list_fraud_cases)
 mcp.tool()(mcp_tools.list_fraud_agents)
 mcp.tool()(mcp_tools.run_fraud_case)
 mcp.tool()(mcp_tools.run_fraud_agent_cases)
+mcp.tool()(mcp_tools.initiate_fraud_analytics)
+mcp.tool()(mcp_tools.get_analytics)
+mcp.tool()(mcp_tools.list_analytics_customers)
+mcp.tool()(mcp_tools.get_customer_analytics)
+mcp.tool()(mcp_tools.get_customer_oltp)
+mcp.tool()(mcp_tools.get_customer_star)
+mcp.tool()(mcp_tools.record_customer_outcome)
+mcp.tool()(mcp_tools.close_analytics)
 mcp.tool()(mcp_tools.generate_historical_oltp)
 mcp.tool()(mcp_tools.generate_realtime_orders)
 mcp.tool()(mcp_tools.etl_star_historical)
