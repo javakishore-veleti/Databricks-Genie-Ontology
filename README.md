@@ -29,6 +29,10 @@ and its AI Agents.
 - [Drop the catalog](#drop-the-catalog)
 - [HTTP interface](#http-interface)
 - [How Genie Agent Works](#how-genie-agent-works)
+  - [Fraud Geo Agent](#fraud-geo-agent)
+  - [This Genie Agent Runtime Behavior](#this-genie-agent-runtime-behavior)
+  - [Do Pages come into the picture?](#do-pages-come-into-the-picture)
+  - [Genie MCP tools this agent uses — and where to trace them](#genie-mcp-tools-this-agent-uses--and-where-to-trace-them)
 - [MCP tools](#mcp-tools)
   - [MCP tools in Databricks Genie](#mcp-tools-in-databricks-genie)
   - [MCP tools in this codebase](#mcp-tools-in-this-codebase)
@@ -502,37 +506,98 @@ Historical generate and ETL should run as Databricks jobs (`as_job: true`, the d
 
 ## How Genie Agent Works
 
-Start with a **Genie Agent** (a Genie space). Open
-`https://{WORKSPACE_HOST}/genie`, pick **Fraud Geo Agent** (or Retail
-Analytics), and type a prompt. That chat is Databricks Genie, not
-`mcp-ecommerce-oltp`.
+Start with a **Genie Agent** (a Genie space). This is Databricks Genie on
+`/genie`, not App `mcp-ecommerce-oltp`.
 
-SQL does **not** run inside the LLM. Genie is a Databricks service: the
-model writes read-only SQL, the **space’s SQL warehouse** runs it, then
-Genie hands the rows back so the model can write the English answer.
+The prompt used in this workspace for Fraud Geo is:
 
-**One turn (prompt given to the agent)**
+```text
+Run fraud case 15 Impossible geo two regions one hour
+```
 
-1. You ask, for example: `Run fraud case 15 Impossible geo two regions one hour`.
-2. **FETCHING_METADATA / FILTERING_CONTEXT** — Genie loads the space tables,
-   Unity Catalog comments, general instructions, example SQL, and this
-   thread. Fraud Geo’s instructions say: self-join `retail_star.fact_order_event`
-   on `customer_key` where `shipping_region_key` differs and `order_ts` is
-   at most 60 minutes apart. Do not use `customer.region`, `fact_sales`, or
-   `fact_inventory` (STALE merchandising).
-3. **ASKING_AI** — Databricks-managed LLM proposes SQL. No warehouse yet.
-   There is no model picker on `/genie`; Databricks chooses the compound
-   stack. Query History and App logs do not name Claude vs GPT.
-4. **PENDING_WAREHOUSE / EXECUTING_QUERY** — Genie submits that SQL to the
-   warehouse on the space (author’s compute). Unity Catalog still filters as
-   **you**. Generated queries are always read-only. Retries stay in Genie.
-5. **COMPLETED** — chat shows generated SQL, the result table, and a short
-   answer.
+That is the first sample question on the space and the first checkbox on
+**02 - Fraud Agent - 10 - Fraud Geo Agent**. Type it in the chat (or check
+the box on that Action). Do not start from Retail Analytics for Case 15.
 
-**What kind of SQL for that prompt**
+### Fraud Geo Agent
 
-Genie should produce an order-grain self-join, not a midnight `fact_sales`
-roll-up. Same shape as Case 15 in this repo:
+**What it is.** A Databricks Genie space titled **Fraud Geo Agent**. Step 02
+(or the Geo Action) creates it with `create_agents --agent-id geo`. It owns
+only Case 15 — impossible geography: the same customer has two shipping
+regions within one hour. It answers questions; it does not run Spark load
+jobs and it does not call `mcp-ecommerce-oltp`.
+
+**Structure** (serialized space `version: 2` from `serialized_fraud_space`):
+
+- Title: `Fraud Geo Agent`
+- Description: Impossible geography: two regions on the same customer in a short window
+- Warehouse: `ecommerce-genie-ontology` (author compute)
+- Catalog: `{CATALOG}` (Unity Catalog `ecommerce_genie_ontology`)
+- `data_sources.tables`: the `SHARED_TABLES` list — fully qualified
+  `{CATALOG}.retail_oltp.*` and `{CATALOG}.retail_star.*` only. Genie does
+  not search other catalogs or schemas.
+- `instructions.text_instructions`: Case 15 notes (overridable with
+  **system_prompt** on the Geo Action)
+- `config.sample_questions`: the five starters below
+- Registry row: `{CATALOG}.retail_star._genie_agent_registry` (`title`,
+  `space_id`, `warehouse_id`)
+
+**URLs** (copy `space_id` from the registry or from Step 02 logs):
+
+| Surface | URL |
+|---|---|
+| All agents | `https://{WORKSPACE_HOST}/genie` |
+| This agent (chat) | `https://{WORKSPACE_HOST}/genie/rooms/{SPACE_ID}` |
+| Settings / Monitor | same room → **Settings** or **Monitor** |
+| Genie MCP | `https://{WORKSPACE_HOST}/api/2.0/mcp/genie/{SPACE_ID}` |
+| Query History | `https://{WORKSPACE_HOST}/sql/history` |
+
+**What it does.** For the Case 15 prompt it should self-join
+`retail_star.fact_order_event` on `customer_key` where
+`shipping_region_key` differs and `order_ts` is at most 60 minutes apart.
+Prefer `mv_order_event` only when you need counts. Seeded customers use
+`address_id` `*-AGEO` (West vs Northeast) and two orders 25 minutes apart.
+
+**What it outputs.** Generated read-only SQL, a result table, and a short
+English answer. Expected columns: `customer_key`, both order ids, both
+regions, both timestamps, `minutes_apart`. `LIMIT 50`. It must not say the
+tables are empty after Step 06 + 07 (or Step 100).
+
+**Prompts on this agent**
+
+| Kind | Text |
+|---|---|
+| **Use this (Case 15)** | `Run fraud case 15 Impossible geo two regions one hour` |
+| Starter (schema smoke) | `Monthly time series aggregation of order_amount from customer_order table` |
+| Starter (schema smoke) | `Distribution of segment in the customer table` |
+| Starter (schema smoke) | `What tables are there and how are they connected? Give me a short summary.` |
+| Starter (schema smoke) | `Distribution of customer_id count in the analytics_log table` |
+| GHA extra | `Run fraud case 15 Impossible geo two regions one hour for customer ids: {ids}` (`additional_prompt`) |
+
+**Context we provide** (what Genie sees before the LLM writes SQL):
+
+- General instructions (Case 15 notes quoted in `fraud_agents.py`)
+- Unity Catalog comments on the attached tables
+- Table/column descriptions from `SHARED_TABLES`
+- Sample questions on the space
+- Published Discover pages only if they actually exist in Discover (see below)
+- The current chat thread
+
+**How it knows which schemas and tables to use**
+
+Genie only considers objects listed on the space. It does not browse the
+whole workspace.
+
+| Use | Do not use for Case 15 |
+|---|---|
+| Schema `{CATALOG}.retail_star` | Other catalogs, `hive_metastore`, schemas not on the space |
+| Schema `{CATALOG}.retail_oltp` (for smoke / address seed, not the Case 15 join) | |
+| `fact_order_event`, `dim_address`, `dim_region`, `dim_customer` | `fact_sales`, `fact_inventory` (STALE merchandising; midnight dates; no ship region) |
+| `mv_order_event` for counts (Retail space attaches metric views; Geo attaches tables — prefer `fact_order_event` here) | `mv_sales_performance`, `mv_inventory_health` |
+| `customer_address` / `*-AGEO` only to explain the seed | `customer.region` (home, static, same for all addresses) |
+| `customer_order` if you must confirm hour-level `order_ts` | Full-table dumps; inventing load steps |
+
+SQL shape for the Case 15 prompt:
 
 ```sql
 WITH pairs AS (
@@ -558,23 +623,99 @@ ORDER BY minutes_apart, customer_key
 LIMIT 50
 ```
 
-Seeded Case 15 customers use `address_id` `*-AGEO` (West vs Northeast) and
-two orders 25 minutes apart. After Step 06 + 07 (or Step 100), this should
-return rows. `mv_order_event` is enough when you only need counts.
+### This Genie Agent Runtime Behavior
 
-**Where to read it**
+SQL does **not** run inside the LLM. Genie is a Databricks service: the
+model writes SQL, the **space’s SQL warehouse** runs it, then Genie hands
+the rows back so the model can write the English answer.
 
-| What you want | Where |
+**One turn** after you paste `Run fraud case 15 Impossible geo two regions one hour`:
+
+1. **FETCHING_METADATA** — pull comments and PK/FK for the attached
+   `retail_oltp` / `retail_star` tables.
+2. **FILTERING_CONTEXT** — keep Case 15 instructions, the `fact_order_event`
+   description, sample questions, and this thread. Drop STALE sales/inventory
+   unless the question is merchandising.
+3. **ASKING_AI** — Databricks-managed LLM proposes read-only SQL. No
+   warehouse yet. There is **no model picker** on `/genie`; Databricks
+   chooses the compound stack. Query History and App logs do not name
+   Claude vs GPT.
+4. **PENDING_WAREHOUSE** — wait for `ecommerce-genie-ontology`.
+5. **EXECUTING_QUERY** — warehouse runs the generated SQL as **you**
+   (Unity Catalog). Compute is the author’s warehouse. Retries stay in
+   Genie. `mcp-ecommerce-oltp` is not invoked.
+6. **COMPLETED** — chat shows SQL + rows + short answer. Failed turns
+   show `FAILED` and an error type (`SQL_EXECUTION_EXCEPTION`,
+   `NO_TABLES_TO_QUERY_EXCEPTION`, …).
+
+### Do Pages come into the picture?
+
+**Sometimes — only after a page is Published in Discover.** They never run
+SQL and they never call MCP.
+
+What this repo actually does:
+
+- Step 04 **does** create and publish Discover **domains** (Sales, Customer,
+  Supply Chain, Finance) via `POST/PATCH /api/discover/v1/domains`.
+- Page bodies (**Impossible Geo**, **Order Event Fact**, plus merchandising
+  pages) are written to `{CATALOG}.retail_star._ontology_pages`.
+- There is still **no public Pages create/publish API**. Step 04 retries
+  Discover page endpoints; those calls **SKIP** until Databricks accepts
+  the payload. Until you Publish a page in
+  `https://{WORKSPACE_HOST}/search/discover`, Case 15 does **not** get
+  page synonyms or citations.
+
+When a page **is** Published, Genie can use it as extra ontology: synonyms
+(`impossible geo`, `two regions one hour`, `case 15`), citations in the
+answer, and a pointer at `fact_order_event`. The warehouse path stays the
+same. If Case 15 works with empty Discover Pages, that is expected —
+instructions + `SHARED_TABLES` + UC comments are enough.
+
+### Genie MCP tools this agent uses — and where to trace them
+
+Two different clients hit the same Genie space. They do **not** share one
+tool-call log.
+
+**A. You type in `/genie/rooms/{SPACE_ID}`**
+
+The UI uses the Genie **Conversation API**, not MCP. You will **not** see
+`genie_ask` / `genie_poll_response` / `genie_get_query_result` in a tool
+panel. Databricks still runs the same warehouse SQL.
+
+**B. An MCP client talks to Genie MCP**
+`https://{WORKSPACE_HOST}/api/2.0/mcp/genie/{SPACE_ID}`
+
+That server exposes only these tools (Databricks-hosted; not our App):
+
+| Tool | When it fires | What you get |
+|---|---|---|
+| `genie_ask` | First question (and follow-ups with `conversation_id`) | `conversation_id`, `response_id`, `status` |
+| `genie_poll_response` | Client waits through `ASKING_AI` → `EXECUTING_QUERY` | Progress, final text, source links |
+| `genie_get_query_result` | After a query attachment exists | Schema + rows of the warehouse SQL |
+| `genie_cancel_response` | Client aborts the turn | Cancelled |
+| `view_ask` | MCP Apps / View clients | Same ask, interactive View |
+
+Step 05 and `invoke_agents --agent-id geo` use the workspace SDK
+(`start_conversation_and_wait`) — path **A**, not these MCP tool names.
+Cursor / Claude Desktop / Supervisor pointed at Genie MCP is path **B**.
+
+`mcp-ecommerce-oltp` is never in either list.
+
+**Where to trace them**
+
+| What | Where to open |
 |---|---|
-| Question, generated SQL, thoughts, thumbs | Space → **Monitor** (`https://{WORKSPACE_HOST}/genie` → agent → Monitor). Needs CAN MANAGE. |
-| Same + `statement_id` + statuses | Open the SQL attachment on the message. API: `GET /api/2.0/genie/spaces/{SPACE_ID}/conversations/{CONVERSATION_ID}/messages` |
-| Warehouse run (SQL text, duration, user) | **Query History** `https://{WORKSPACE_HOST}/sql/history` — filter Genie / `genie_space_id`. Join on `statement_id`. |
-| Who asked, when | Audit: Genie Agent events (not the SQL text) |
-| Our MCP tools | **Not here.** Classic `/genie` never calls `mcp-ecommerce-oltp`. Watch that App only from Playground (Tools-enabled model → MCP Servers). |
-
-Step 05 and `genie_ask` use the same path: Genie MCP
-`https://{WORKSPACE_HOST}/api/2.0/mcp/genie/{SPACE_ID}` → warehouse SQL →
-`genie_get_query_result`.
+| Path A — chat SQL + thoughts | `https://{WORKSPACE_HOST}/genie/rooms/{SPACE_ID}` → open the SQL attachment |
+| Path A — all questions | Same room → **Monitor** (CAN MANAGE) |
+| Path A or B — message JSON, statuses, `statement_id` | `GET /api/2.0/genie/spaces/{SPACE_ID}/conversations/{CONVERSATION_ID}/messages` |
+| Path A or B — warehouse SQL, duration, user | `https://{WORKSPACE_HOST}/sql/history` — filter Genie / `query_source.genie_space_id` = `{SPACE_ID}`; match `statement_id` |
+| Path A or B — who asked | Audit logs: Genie Agent events (ids and time, not SQL) |
+| Path B — which MCP **tool** ran | The **MCP client** transcript (Cursor / Claude / Supervisor tool calls). Databricks does not write `genie_ask` into Query History. |
+| Path B — Genie MCP HTTP | Client debug / proxy logs against `/api/2.0/mcp/genie/{SPACE_ID}` |
+| Step 05 / Geo Action ask job | GitHub Actions log: `STATUS`, `CONTENT`, printed SQL |
+| Space id for all of the above | `{CATALOG}.retail_star._genie_agent_registry` where `title = 'Fraud Geo Agent'` |
+| Our App tools (`get_customer_star`, …) | **Not this agent.** App logs at `https://{WORKSPACE_HOST}/apps/mcp-ecommerce-oltp` only after Playground → Tools → MCP Servers → `mcp-ecommerce-oltp` |
+| Pages / citations | Discover `https://{WORKSPACE_HOST}/search/discover` — only if the page shows **Published**. Otherwise they are not in the turn. |
 
 ## MCP tools
 
