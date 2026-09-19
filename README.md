@@ -30,6 +30,29 @@ compared with legitimate ones. Amount, sudden loss of balance, and type of
 movement are the high-ranking signals; agents should use them for risk
 analysis without dumping ten years of rows into a model.
 
+### Fraud Detection behavior
+
+- Fraud judgment is the **LLM fraud agent**, not PySpark.
+- Each specialist has its own **system prompt** (amount vs baseline, sudden drain, transaction type, shared-address network, velocity, changing behavior, rare event, explain the why).
+- The agent writes **one outcome per customer**, not one verdict for a list.
+- A customer list is only for **paging** the work. Do not ask the model to judge thousands of IDs in one shot.
+- Outcome values: `fraud_found` or `not_found`.
+- Persist on `analytics_log_customer`: `analytics_outcome` plus `analytics_log_info` (JSON: the why — amount, velocity, address, type).
+- Session table `analytics_log`: requesting user, customer count, date range, requested datetime, analytics start/end, status `In Progress` or `Completed`.
+- `initiate_fraud_analytics(from_date, to_date)` finds customer IDs **on the server**. It does not dump IDs into the LLM.
+- That call creates `analytics_log` and one `analytics_log_customer` row per customer, with dim/fact **counts** for the same window.
+- PySpark / SQL only **prepare**: customers in range, counts, optional evidence pack (named case, max 50 rows) as **signals**.
+- PySpark does **not** set `fraud_found`. Spark `HAVING` / dollar thresholds are a rule engine — they miss changing behavior and raise false positives.
+- MCP never returns 300,000 postings or 15 million orders. Hydrate **one customer** at a time (max 50 evidence rows).
+- Agents stay **customer-scoped**. Loop sequential or parallel with a small concurrency cap.
+- Databricks **Genie** specialists run in the workspace on the same warehouse.
+- Portal agents (**LangGraph**, **Google ADK**, **AWS Strands**) call MCP through FastAPI — not raw tables.
+- Same customer and date explain both a velocity flag and a wire-outflow flag.
+- Sales fraud and funds-movement fraud share only `dim_customer` and `dim_date`.
+- Network hops use `entity_link` (`has_address`, `shared_address`). No graph database for these cases.
+- Generate / ETL / next-100k / next-N-months jobs **load data**. They do not classify fraud.
+- `close_analytics` sets status `Completed` when the agent says the run is done.
+
 ### Customer Data Capacity Considered
 
 Capacity is planned from **18 September 2016** through **18 September 2026**
@@ -127,13 +150,11 @@ before/after.
 
 **MCP contract (customer first)**
 
-1. `list_customer_ids(from_date, to_date)` — IDs only, paged
-2. Agent loop (parallel with a small concurrency cap, or sequential)
-3. `get_customer_oltp` and/or `get_customer_star` for that `customer_id` and the same window (max 50 rows; never 300,000 postings)
-
-Databricks Genie agents query Unity Catalog in the workspace. Portal users reach
-non-Genie agents (LangGraph, Google ADK, AWS Strands) through FastAPI; those
-agents call MCP, not raw tables.
+- `initiate_fraud_analytics(from_date, to_date)` — server finds IDs; writes `analytics_log` + `analytics_log_customer`
+- Agent pages customers; hydrates **one** customer (counts + max 50 evidence rows)
+- `record_customer_outcome` — `fraud_found` / `not_found` + JSON why
+- `close_analytics` — status `Completed`
+- Genie in the workspace; LangGraph / Google ADK / AWS Strands via FastAPI → MCP, not raw tables
 
 **Dims to add (few, conformed)**
 
@@ -442,9 +463,10 @@ Cursor / Claude Desktop:
 | `generate_next_oltp` | Next 100,000 OLTP rows. Writes `ingestion_tracker` and `ingestion_log`. |
 | `etl_next_months` | Next N months of dims/facts (1–12). No error if less OLTP remains. |
 
-Customer-first contract (same warehouse; hydrate one customer after listing
-IDs): `list_customer_ids`, `get_customer_oltp`, `get_customer_star`. Those
-belong on this server, not on Genie.
+Customer-first contract (same warehouse; session, not an ID dump):
+`initiate_fraud_analytics`, `get_analytics`, `list_analytics_customers`,
+`get_customer_analytics`, `record_customer_outcome`, `close_analytics`.
+Those belong on this server, not on Genie.
 
 ## Fraud agents (inside `ecommerce_genie_ontology`)
 
