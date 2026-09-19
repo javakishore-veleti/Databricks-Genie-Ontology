@@ -39,7 +39,7 @@ and its AI Agents.
 
 ## Running Agentic Fraud Analytics - Start To Finish
 
-Use **Actions → Run workflow**. Times include Databricks Job start (cold warehouse / cluster). Look at the GitHub run first, then the Databricks account and workspace pages.
+Use **Actions → Run workflow**. **Time** is the last measured GitHub Actions duration (cold warehouse / cluster). Look at the GitHub run first, then the Databricks account and workspace pages.
 
 Template URLs only — replace the `{placeholders}`:
 
@@ -52,7 +52,7 @@ Template URLs only — replace the `{placeholders}`:
 
 | S. No | GitHub workflow name | Time | What to look at | Comments |
 |---|---|---|---|---|
-| 1 | 01 - Setup - Step 01 - Create Databricks stack | 20–45 min | GitHub job green; workspace **RUNNING**; SQL warehouse up; catalog empty tables | Account page `https://accounts.cloud.databricks.com/workspaces/{WORKSPACE_ID}?account_id={ACCOUNT_ID}`. Then open `https://{WORKSPACE_HOST}`. Starts the 3-hour destroy timer. Does **not** create Genie spaces. |
+| 1 | 01 - Setup - Step 01 - Create Databricks stack | **5 min** | GitHub job green; workspace **RUNNING**; SQL warehouse up; catalog empty tables | Measured 4 min 50 s. Workspace 38 s, warehouse 20 s, catalog 2 min 43 s, deploy jobs 54 s. Account page `https://accounts.cloud.databricks.com/workspaces/{WORKSPACE_ID}?account_id={ACCOUNT_ID}`. Then open `https://{WORKSPACE_HOST}`. Starts the 3-hour destroy timer. Does **not** create Genie spaces. |
 | 2 | 01 - Setup - Step 02 - Create all Genie agents | 5–15 min | 11 Genie spaces (Retail Analytics + 10 fraud specialists) | Genie `https://{WORKSPACE_HOST}/genie`. Rerun this if agents fail; do not rerun Step 01. Each space MCP: `https://{WORKSPACE_HOST}/api/2.0/mcp/genie/{SPACE_ID}`. |
 | 3 | 01 - Setup - Step 03 - Invoke Retail Analytics Genie | 5–20 min | Sample questions return SQL + a short answer | Confirms Genie MCP on the retail space. Optional question input. |
 | 4 | 01 - Setup - Step 04 - Populate next 100000 OLTP rows | 10–40 min | `ingestion_tracker` / `ingestion_log`; row counts on `customer_order` and `customer_transaction` | Catalog `https://{WORKSPACE_HOST}/explore/data/{CATALOG}`. Default 100,000 rows. Repeat until `caught_up`. |
