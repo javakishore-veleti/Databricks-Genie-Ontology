@@ -1,0 +1,29 @@
+[project]
+name = "databricks-genie-ontology"
+version = "0.1.0"
+description = "Programmatic Databricks workflows that provision the ecommerce Genie Ontology demo, create Genie agents, and invoke them."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "javakishore-veleti" }]
+dependencies = [
+    "databricks-sdk>=0.50.0",
+    "fastapi>=0.115.0",
+    "numpy>=1.26.0",
+    "pandas>=2.2.0",
+    "python-dotenv>=1.0.1",
+    "uvicorn[standard]>=0.32.0",
+]
+
+[project.scripts]
+genie-ontology = "ecommerce_genie_ontology.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ecommerce_genie_ontology"]
+
+[tool.uv]
+package = true
