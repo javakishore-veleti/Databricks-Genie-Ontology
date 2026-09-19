@@ -7,7 +7,8 @@
     "ecommerce:workspace:databricks-setup": "node scripts/ecommerce-workspace-databricks-setup.mjs",
     "ecommerce:warehouse:databricks-setup": "node scripts/ecommerce-warehouse-databricks-setup.mjs",
     "ecommerce:catalog:databricks-setup": "node scripts/ecommerce-catalog-databricks-setup.mjs",
-    "ecommerce:catalog:databricks-truncate": "node scripts/ecommerce-catalog-databricks-truncate.mjs"
+    "ecommerce:catalog:databricks-truncate": "node scripts/ecommerce-catalog-databricks-truncate.mjs",
+    "ecommerce:mcp": "uv run --extra mcp genie-ontology mcp"
   },
   "dependencies": {
     "undici": "^7.16.0"

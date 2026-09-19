@@ -50,5 +50,13 @@ def optional_env(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()
 
 
+def optional_int(name: str, default: int) -> int:
+    raw = optional_env(name, str(default))
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
 def env_emails(name: str) -> tuple[str, ...]:
     return tuple(part.strip() for part in optional_env(name).split(",") if part.strip())

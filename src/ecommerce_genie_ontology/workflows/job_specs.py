@@ -8,6 +8,10 @@ JOB_NAMES = {
     "create_agents": "ecommerce-genie-ontology-create-agents",
     "invoke_agents": "ecommerce-genie-ontology-invoke-agents",
     "cleanup": "ecommerce-genie-ontology-cleanup",
+    "generate_historical": "ecommerce-genie-ontology-generate-historical",
+    "generate_realtime": "ecommerce-genie-ontology-generate-realtime",
+    "etl_historical": "ecommerce-genie-ontology-etl-historical",
+    "etl_cdc": "ecommerce-genie-ontology-etl-cdc",
 }
 
 JOB_DESCRIPTIONS = {
@@ -15,6 +19,10 @@ JOB_DESCRIPTIONS = {
     "create_agents": "Create or update the Retail Analytics Genie agent.",
     "invoke_agents": "Ask the sample questions against the Retail Analytics Genie agent.",
     "cleanup": "Drop the demo catalog and trash the Genie agent. Requires confirm=DELETE.",
+    "generate_historical": "Write 3-year OLTP customer/order history with PySpark.",
+    "generate_realtime": "Append 100-10000 new OLTP orders for CDC.",
+    "etl_historical": "Rebuild star-schema dims/facts from OLTP.",
+    "etl_cdc": "Apply Delta change feed into fact_sales.",
 }
 
 WORKFLOW_ORDER = ("provision", "create_agents", "invoke_agents")
@@ -159,6 +167,66 @@ def job_specs() -> list[JobSpec]:
                     "ecommerce_genie_ontology.workflows.cleanup.workspace_facade.impl",
                     "CleanupWorkspaceFacadeImpl",
                     description="Drop the demo catalog and trash the Genie agent",
+                ),
+            ),
+        ),
+        JobSpec(
+            workflow_name="generate_historical",
+            job_name=JOB_NAMES["generate_historical"],
+            description=JOB_DESCRIPTIONS["generate_historical"],
+            tasks=(
+                _task(
+                    "generate_historical",
+                    "generate_historical",
+                    "ecommerce_genie_ontology.workflows.pipeline.tasks.generate_historical",
+                    "ecommerce_genie_ontology.adapter_databricks.facades.pipeline_facade",
+                    "PipelineFacadeImpl",
+                    description="Generate historical OLTP tables",
+                ),
+            ),
+        ),
+        JobSpec(
+            workflow_name="generate_realtime",
+            job_name=JOB_NAMES["generate_realtime"],
+            description=JOB_DESCRIPTIONS["generate_realtime"],
+            tasks=(
+                _task(
+                    "generate_realtime",
+                    "generate_realtime",
+                    "ecommerce_genie_ontology.workflows.pipeline.tasks.generate_realtime",
+                    "ecommerce_genie_ontology.adapter_databricks.facades.pipeline_facade",
+                    "PipelineFacadeImpl",
+                    description="Append realtime OLTP orders",
+                ),
+            ),
+        ),
+        JobSpec(
+            workflow_name="etl_historical",
+            job_name=JOB_NAMES["etl_historical"],
+            description=JOB_DESCRIPTIONS["etl_historical"],
+            tasks=(
+                _task(
+                    "etl_historical",
+                    "etl_historical",
+                    "ecommerce_genie_ontology.workflows.pipeline.tasks.etl_historical",
+                    "ecommerce_genie_ontology.adapter_databricks.facades.pipeline_facade",
+                    "PipelineFacadeImpl",
+                    description="Historical star schema ETL",
+                ),
+            ),
+        ),
+        JobSpec(
+            workflow_name="etl_cdc",
+            job_name=JOB_NAMES["etl_cdc"],
+            description=JOB_DESCRIPTIONS["etl_cdc"],
+            tasks=(
+                _task(
+                    "etl_cdc",
+                    "etl_cdc",
+                    "ecommerce_genie_ontology.workflows.pipeline.tasks.etl_cdc",
+                    "ecommerce_genie_ontology.adapter_databricks.facades.pipeline_facade",
+                    "PipelineFacadeImpl",
+                    description="CDC star schema ETL",
                 ),
             ),
         ),

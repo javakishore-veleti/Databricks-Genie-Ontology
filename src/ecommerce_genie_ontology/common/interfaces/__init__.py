@@ -1,10 +1,13 @@
 from ecommerce_genie_ontology.common.interfaces.account import AccountFacade
 from ecommerce_genie_ontology.common.interfaces.cleanup import CleanupWorkspaceFacade
 from ecommerce_genie_ontology.common.interfaces.create_agents import CreateAgentsWorkspaceFacade
+from ecommerce_genie_ontology.common.interfaces.ga import GaFacade
+from ecommerce_genie_ontology.common.interfaces.lg import LgFacade
 from ecommerce_genie_ontology.common.interfaces.genie import GenieFacade
 from ecommerce_genie_ontology.common.interfaces.governance import GovernanceFacade
 from ecommerce_genie_ontology.common.interfaces.invoke_agents import InvokeAgentsWorkspaceFacade
 from ecommerce_genie_ontology.common.interfaces.jobs import JobsFacade
+from ecommerce_genie_ontology.common.interfaces.pipeline import PipelineFacade
 from ecommerce_genie_ontology.common.interfaces.provision import ProvisionWorkspaceFacade
 from ecommerce_genie_ontology.common.interfaces.pw import PwFacade
 from ecommerce_genie_ontology.common.interfaces.dy import DyFacade
@@ -17,10 +20,13 @@ __all__ = [
     "AccountFacade",
     "CleanupWorkspaceFacade",
     "CreateAgentsWorkspaceFacade",
+    "GaFacade",
     "GenieFacade",
+    "LgFacade",
     "GovernanceFacade",
     "InvokeAgentsWorkspaceFacade",
     "JobsFacade",
+    "PipelineFacade",
     "ProvisionWorkspaceFacade",
     "PwFacade",
     "DyFacade",

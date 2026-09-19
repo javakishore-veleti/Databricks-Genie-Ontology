@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from ecommerce_genie_ontology.common.dtos.jobs import JobSpec
 from ecommerce_genie_ontology.common.dtos.ontology import DpCtx, LsCtx, PwCtx, DyCtx, TcCtx, WfCtx, WfItem, WhCtx
+from ecommerce_genie_ontology.common.dtos.pipeline import EcCtx, EhCtx, FcCtx, OdCtx, OhCtx
 from ecommerce_genie_ontology.common.interfaces.workflow import WorkflowRunner
 from ecommerce_genie_ontology.workflows.job_specs import JOB_DESCRIPTIONS, WORKFLOW_ORDER
 
@@ -46,6 +47,10 @@ class WorkflowOrchestrator:
             "space_id": settings.genie_space_id,
             "package_path": settings.package_workspace_path,
             "confirm": ctx.req.confirm,
+            "oltp_schema": settings.oltp_schema,
+            "customer_count": str(settings.customer_count),
+            "orders_per_year": str(settings.orders_per_year),
+            "year_count": str(settings.year_count),
         }
         specs = {spec.workflow_name: spec for spec in self.job_specs()}
         for workflow_name in names:
@@ -79,6 +84,21 @@ class WorkflowOrchestrator:
 
     def destroy(self, ctx: DyCtx) -> None:
         self._factory.dy_facade().destroy(ctx)
+
+    def generate_historical(self, ctx: OhCtx) -> None:
+        self._factory.pipeline_facade().generate_historical(ctx)
+
+    def generate_realtime(self, ctx: OdCtx) -> None:
+        self._factory.pipeline_facade().generate_realtime(ctx)
+
+    def etl_historical(self, ctx: EhCtx) -> None:
+        self._factory.pipeline_facade().etl_historical(ctx)
+
+    def etl_cdc(self, ctx: EcCtx) -> None:
+        self._factory.pipeline_facade().etl_cdc(ctx)
+
+    def run_fraud_case(self, ctx: FcCtx) -> None:
+        self._factory.pipeline_facade().run_fraud_case(ctx)
 
     def job_specs(self) -> list[JobSpec]:
         return self._factory.job_specs()

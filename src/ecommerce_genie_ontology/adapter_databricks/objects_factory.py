@@ -14,6 +14,7 @@ from ecommerce_genie_ontology.adapter_databricks.facades.genie_facade import Gen
 from ecommerce_genie_ontology.adapter_databricks.facades.governance_facade import GovernanceFacadeImpl
 from ecommerce_genie_ontology.adapter_databricks.facades.jobs_facade import JobsFacadeImpl
 from ecommerce_genie_ontology.adapter_databricks.facades.dy_facade import DyFacadeImpl
+from ecommerce_genie_ontology.adapter_databricks.facades.pipeline_facade import PipelineFacadeImpl
 from ecommerce_genie_ontology.adapter_databricks.facades.pw_facade import PwFacadeImpl
 from ecommerce_genie_ontology.adapter_databricks.facades.sql_facade import SqlFacadeImpl
 from ecommerce_genie_ontology.adapter_databricks.facades.tc_facade import TcFacadeImpl
@@ -24,6 +25,7 @@ from ecommerce_genie_ontology.common.dtos.settings import Settings
 from ecommerce_genie_ontology.common.interfaces.genie import GenieFacade
 from ecommerce_genie_ontology.common.interfaces.governance import GovernanceFacade
 from ecommerce_genie_ontology.common.interfaces.jobs import JobsFacade
+from ecommerce_genie_ontology.common.interfaces.pipeline import PipelineFacade
 from ecommerce_genie_ontology.common.interfaces.dy import DyFacade
 from ecommerce_genie_ontology.common.interfaces.pw import PwFacade
 from ecommerce_genie_ontology.common.interfaces.sql import SqlFacade
@@ -118,4 +120,10 @@ class AdapterDatabricksObjectsFactory(ObjectsFactory):
         return self.singleton(
             "dy_facade",
             lambda: DyFacadeImpl(self.account_dao(), self.settings()),
+        )
+
+    def pipeline_facade(self) -> PipelineFacade:
+        return self.singleton(
+            "pipeline_facade",
+            lambda: PipelineFacadeImpl.from_factory(self),
         )

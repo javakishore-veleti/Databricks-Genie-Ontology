@@ -24,6 +24,23 @@ from ecommerce_genie_ontology.common.dtos.ontology import (
     WhReq,
     WhResp,
 )
+from ecommerce_genie_ontology.common.dtos.pipeline import (
+    EcCtx,
+    EcReq,
+    EcResp,
+    EhCtx,
+    EhReq,
+    EhResp,
+    FcCtx,
+    FcReq,
+    FcResp,
+    OdCtx,
+    OdReq,
+    OdResp,
+    OhCtx,
+    OhReq,
+    OhResp,
+)
 from ecommerce_genie_ontology.common.interfaces.workflow import WorkflowRunner
 from ecommerce_genie_ontology.common.utils.env import find_env_file, load_env
 from ecommerce_genie_ontology.workflows.objects_factory import WorkflowsObjectsFactory
@@ -47,56 +64,106 @@ class CliApp:
             self._runner.deploy(ctx)
             return 0
         if args.command == "run":
-            if args.workflow == "provision_workspace":
-                ctx = PwCtx(PwReq(), PwResp())
-                self._runner.provision_workspace(ctx)
-                print(ctx.resp)
-                return 0
-            if args.workflow == "provision_warehouse":
-                ctx = WhCtx(WhReq(), WhResp())
-                self._runner.provision_warehouse(ctx)
-                print(ctx.resp)
-                return 0
-            if args.workflow == "truncate":
-                ctx = TcCtx(
-                    TcReq(catalog=args.catalog, confirm=args.confirm),
-                    TcResp(),
-                )
-                self._runner.truncate(ctx)
-                print(ctx.resp)
-                return 0
-            if args.workflow == "destroy":
-                ctx = DyCtx(
-                    DyReq(
-                        workspace_name=args.workspace_name,
-                        warehouse_name=args.warehouse_name,
-                        catalog=args.catalog,
-                        confirm=args.confirm,
-                    ),
-                    DyResp(),
-                )
-                self._runner.destroy(ctx)
-                print(ctx.resp)
-                return 0
-            ctx = WfCtx(
-                WfReq(
-                    workflow=args.workflow,
-                    question=args.question,
-                    confirm=args.confirm,
-                    as_job=args.as_job,
-                ),
-                WfResp(),
-            )
-            if args.as_job:
-                self._runner.trigger(ctx)
-            else:
-                self._runner.run(ctx)
-            return 0
+            return self._run(args)
         if args.command == "serve":
             self._serve(args.host, args.port)
             return 0
+        if args.command == "mcp":
+            from ecommerce_genie_ontology.mcp.server import main as mcp_main
+
+            mcp_main()
+            return 0
+        if args.command == "fraud-agent":
+            from ecommerce_genie_ontology.mcp.agent import run_fraud_agent
+
+            case_ids = [part.strip() for part in args.cases.split(",") if part.strip()] if args.cases else []
+            run_fraud_agent(case_ids or None)
+            return 0
         parser.error(f"Unknown command {args.command}")
         return 2
+
+    def _run(self, args: argparse.Namespace) -> int:
+        if args.workflow == "provision_workspace":
+            ctx = PwCtx(PwReq(), PwResp())
+            self._runner.provision_workspace(ctx)
+            print(ctx.resp)
+            return 0
+        if args.workflow == "provision_warehouse":
+            ctx = WhCtx(WhReq(), WhResp())
+            self._runner.provision_warehouse(ctx)
+            print(ctx.resp)
+            return 0
+        if args.workflow == "truncate":
+            ctx = TcCtx(
+                TcReq(catalog=args.catalog, confirm=args.confirm),
+                TcResp(),
+            )
+            self._runner.truncate(ctx)
+            print(ctx.resp)
+            return 0
+        if args.workflow == "destroy":
+            ctx = DyCtx(
+                DyReq(
+                    workspace_name=args.workspace_name,
+                    warehouse_name=args.warehouse_name,
+                    catalog=args.catalog,
+                    confirm=args.confirm,
+                ),
+                DyResp(),
+            )
+            self._runner.destroy(ctx)
+            print(ctx.resp)
+            return 0
+        if args.workflow == "generate_historical":
+            ctx = OhCtx(
+                OhReq(
+                    customer_count=args.customers,
+                    orders_per_year=args.orders_per_year,
+                    year_count=args.years,
+                    as_job=args.as_job,
+                ),
+                OhResp(),
+            )
+            self._runner.generate_historical(ctx)
+            print(ctx.resp)
+            return 0
+        if args.workflow == "generate_realtime":
+            ctx = OdCtx(
+                OdReq(count=args.count, year_window=args.year_window, as_job=args.as_job),
+                OdResp(),
+            )
+            self._runner.generate_realtime(ctx)
+            print(ctx.resp)
+            return 0
+        if args.workflow == "etl_historical":
+            ctx = EhCtx(EhReq(as_job=args.as_job), EhResp())
+            self._runner.etl_historical(ctx)
+            print(ctx.resp)
+            return 0
+        if args.workflow == "etl_cdc":
+            ctx = EcCtx(EcReq(as_job=args.as_job), EcResp())
+            self._runner.etl_cdc(ctx)
+            print(ctx.resp)
+            return 0
+        if args.workflow == "fraud":
+            ctx = FcCtx(FcReq(case_id=args.case_id), FcResp())
+            self._runner.run_fraud_case(ctx)
+            print(ctx.resp)
+            return 0
+        ctx = WfCtx(
+            WfReq(
+                workflow=args.workflow,
+                question=args.question,
+                confirm=args.confirm,
+                as_job=args.as_job,
+            ),
+            WfResp(),
+        )
+        if args.as_job:
+            self._runner.trigger(ctx)
+        else:
+            self._runner.run(ctx)
+        return 0
 
     def _serve(self, host: str, port: int) -> None:
         import uvicorn
@@ -108,8 +175,9 @@ class CliApp:
         parser = argparse.ArgumentParser(
             prog="genie-ontology",
             description=(
-                "Provision the ecommerce Genie Ontology demo, create the Genie agent, "
-                "and invoke it. Credentials come from .env. Use uv, not pip."
+                "Provision the ecommerce Genie Ontology demo, generate OLTP/CDC data, "
+                "run star-schema ETL, and invoke Genie or the operational MCP. "
+                "Credentials come from .env. Use uv, not pip."
             ),
         )
         sub = parser.add_subparsers(dest="command", required=True)
@@ -126,6 +194,11 @@ class CliApp:
                 "cleanup",
                 "truncate",
                 "destroy",
+                "generate_historical",
+                "generate_realtime",
+                "etl_historical",
+                "etl_cdc",
+                "fraud",
                 "all",
             ],
             help="Workflow to run.",
@@ -152,9 +225,32 @@ class CliApp:
             default="",
             help="Warehouse for destroy. Empty uses DATABRICKS_WAREHOUSE_NAME.",
         )
+        run.add_argument("--customers", type=int, default=200, help="OLTP customers for generate_historical")
+        run.add_argument(
+            "--orders-per-year",
+            type=int,
+            default=25000,
+            help="Orders per customer per year for generate_historical",
+        )
+        run.add_argument("--years", type=int, default=3, choices=[1, 2, 3], help="History window ending this month")
+        run.add_argument("--count", type=int, default=1000, help="Realtime orders (100-10000)")
+        run.add_argument(
+            "--year-window",
+            default="latest",
+            choices=["latest", "last_2", "last_3", "all"],
+            help="Date window for realtime orders",
+        )
+        run.add_argument("--case-id", default="01", help="Fraud case id 01-15")
         serve = sub.add_parser("serve", help="Start the FastAPI HTTP interface")
         serve.add_argument("--host", default="127.0.0.1")
         serve.add_argument("--port", type=int, default=8000)
+        sub.add_parser("mcp", help="Start the operational MCP server on stdio")
+        fraud = sub.add_parser("fraud-agent", help="Run 15 fraud evidence packs (or a subset) via SQL")
+        fraud.add_argument(
+            "--cases",
+            default="",
+            help="Comma-separated case ids (01-15). Empty runs all 15.",
+        )
         return parser
 
 

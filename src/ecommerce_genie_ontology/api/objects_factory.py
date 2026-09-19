@@ -19,7 +19,7 @@ class ApiObjectsFactory(ObjectsFactory):
         return self.workflows_factory().orchestrator()
 
     def workflows_service(self) -> WorkflowsApiService:
-        return self.singleton("workflows_service", lambda: WorkflowsApiService(self.workflow_runner()))
+        return self.singleton("workflows_service", lambda: WorkflowsApiService(self.workflows_factory()))
 
     def health_router(self) -> HealthRouter:
         return self.singleton("health_router", lambda: HealthRouter(self.workflows_service()))

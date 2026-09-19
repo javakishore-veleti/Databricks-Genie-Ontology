@@ -15,8 +15,20 @@ dependencies = [
     "uvicorn[standard]>=0.32.0",
 ]
 
+[project.optional-dependencies]
+mcp = ["mcp>=2.2.0"]
+langgraph = ["langgraph>=0.2.0", "langchain-core>=0.3.0"]
+google-adk = ["google-adk>=1.15.0"]
+agents = [
+    "mcp>=2.2.0",
+    "langgraph>=0.2.0",
+    "langchain-core>=0.3.0",
+    "google-adk>=1.15.0",
+]
+
 [project.scripts]
 genie-ontology = "ecommerce_genie_ontology.cli:main"
+genie-ontology-mcp = "ecommerce_genie_ontology.mcp.server:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -19,6 +19,19 @@ from ecommerce_genie_ontology.common.dtos.ontology import (
     WhReq,
     WhRespResult,
 )
+from ecommerce_genie_ontology.common.dtos.pipeline import (
+    EcReq,
+    EcRespResult,
+    EhReq,
+    EhRespResult,
+    FcReq,
+    FcRespResult,
+    OdReq,
+    OdRespResult,
+    OhReq,
+    OhRespResult,
+)
+from ecommerce_genie_ontology.common.dtos.chat import ChReq, ChRespResult
 
 __all__ = [
     "DpReq",
@@ -38,4 +51,16 @@ __all__ = [
     "WfRespResult",
     "WhReq",
     "WhRespResult",
+    "OhReq",
+    "OhRespResult",
+    "OdReq",
+    "OdRespResult",
+    "EhReq",
+    "EhRespResult",
+    "EcReq",
+    "EcRespResult",
+    "FcReq",
+    "FcRespResult",
+    "ChReq",
+    "ChRespResult",
 ]

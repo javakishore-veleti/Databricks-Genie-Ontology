@@ -124,6 +124,12 @@ class JobsDao:
             JobParameterDefinition(name="space_id", default=self._settings.genie_space_id),
             JobParameterDefinition(name="package_path", default=self._settings.package_workspace_path),
             JobParameterDefinition(name="confirm", default=""),
+            JobParameterDefinition(name="oltp_schema", default=self._settings.oltp_schema),
+            JobParameterDefinition(name="customer_count", default=str(self._settings.customer_count)),
+            JobParameterDefinition(name="orders_per_year", default=str(self._settings.orders_per_year)),
+            JobParameterDefinition(name="year_count", default=str(self._settings.year_count)),
+            JobParameterDefinition(name="cdc_count", default="1000"),
+            JobParameterDefinition(name="year_window", default="latest"),
         ]
 
     @staticmethod
@@ -137,6 +143,12 @@ class JobsDao:
             "space_id": "{{job.parameters.space_id}}",
             "package_path": "{{job.parameters.package_path}}",
             "confirm": "{{job.parameters.confirm}}",
+            "oltp_schema": "{{job.parameters.oltp_schema}}",
+            "customer_count": "{{job.parameters.customer_count}}",
+            "orders_per_year": "{{job.parameters.orders_per_year}}",
+            "year_count": "{{job.parameters.year_count}}",
+            "cdc_count": "{{job.parameters.cdc_count}}",
+            "year_window": "{{job.parameters.year_window}}",
         }
         if extra:
             params.update(extra)
@@ -154,6 +166,12 @@ dbutils.widgets.text("space_id", "", "Existing Genie space ID")
 dbutils.widgets.text("package_path", "", "Workspace path to uploaded package src/")
 dbutils.widgets.text("question", "", "Question for invoke tasks")
 dbutils.widgets.text("confirm", "", "Type DELETE to confirm cleanup")
+dbutils.widgets.text("oltp_schema", "retail_oltp", "OLTP schema")
+dbutils.widgets.text("customer_count", "200", "Customer count")
+dbutils.widgets.text("orders_per_year", "25000", "Orders per customer per year")
+dbutils.widgets.text("year_count", "3", "Historical years")
+dbutils.widgets.text("cdc_count", "1000", "Realtime order count")
+dbutils.widgets.text("year_window", "latest", "latest | last_2 | last_3 | all")
 
 # COMMAND ----------
 

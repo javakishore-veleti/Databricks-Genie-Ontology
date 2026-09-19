@@ -10,11 +10,14 @@ from ecommerce_genie_ontology.common.dtos.settings import Settings
 from ecommerce_genie_ontology.common.interfaces.cleanup import CleanupWorkspaceFacade
 from ecommerce_genie_ontology.common.interfaces.create_agents import CreateAgentsWorkspaceFacade
 from ecommerce_genie_ontology.common.interfaces.invoke_agents import InvokeAgentsWorkspaceFacade
+from ecommerce_genie_ontology.common.interfaces.ga import GaFacade
+from ecommerce_genie_ontology.common.interfaces.lg import LgFacade
 from ecommerce_genie_ontology.common.interfaces.jobs import JobsFacade
 from ecommerce_genie_ontology.common.interfaces.provision import ProvisionWorkspaceFacade
-from ecommerce_genie_ontology.common.interfaces.pw import PwFacade
+from ecommerce_genie_ontology.common.interfaces.pipeline import PipelineFacade
 from ecommerce_genie_ontology.common.interfaces.dy import DyFacade
 from ecommerce_genie_ontology.common.interfaces.tc import TcFacade
+from ecommerce_genie_ontology.common.interfaces.pw import PwFacade
 from ecommerce_genie_ontology.common.interfaces.wh import WhFacade
 from ecommerce_genie_ontology.common.interfaces.workflow import Workflow, WorkflowRunner, WorkflowTask
 from ecommerce_genie_ontology.common.utils.objects_factory import ObjectsFactory
@@ -52,6 +55,11 @@ from ecommerce_genie_ontology.workflows.provision.workflow import ProvisionWorkf
 from ecommerce_genie_ontology.workflows.provision.workspace_facade.impl import (
     ProvisionWorkspaceFacadeImpl,
 )
+from ecommerce_genie_ontology.workflows.pipeline.tasks.etl_cdc import EtlCdcTask
+from ecommerce_genie_ontology.workflows.pipeline.tasks.etl_historical import EtlHistoricalTask
+from ecommerce_genie_ontology.workflows.pipeline.tasks.generate_historical import GenerateHistoricalTask
+from ecommerce_genie_ontology.workflows.pipeline.tasks.generate_realtime import GenerateRealtimeTask
+from ecommerce_genie_ontology.workflows.pipeline.workflow import SingleTaskWorkflow
 
 
 class WorkflowsObjectsFactory(ObjectsFactory):
@@ -86,6 +94,27 @@ class WorkflowsObjectsFactory(ObjectsFactory):
 
     def dy_facade(self) -> DyFacade:
         return self.adapter_factory().dy_facade()
+
+    def pipeline_facade(self) -> PipelineFacade:
+        return self.adapter_factory().pipeline_facade()
+
+    def lg_facade(self) -> LgFacade:
+        return self.singleton("lg_facade", self._lg_facade)
+
+    def ga_facade(self) -> GaFacade:
+        return self.singleton("ga_facade", self._ga_facade)
+
+    @staticmethod
+    def _lg_facade() -> LgFacade:
+        from ecommerce_genie_ontology.agents_langgraph.facade import LangGraphFraudAgentFacadeImpl
+
+        return LangGraphFraudAgentFacadeImpl()
+
+    @staticmethod
+    def _ga_facade() -> GaFacade:
+        from ecommerce_genie_ontology.agents_google_adk.facade import GoogleAdkFraudAgentFacadeImpl
+
+        return GoogleAdkFraudAgentFacadeImpl()
 
     def provision_workspace_facade(self) -> ProvisionWorkspaceFacade:
         return self.singleton(
@@ -170,6 +199,16 @@ class WorkflowsObjectsFactory(ObjectsFactory):
             "create_agents": self.create_agents_workflow,
             "invoke_agents": self.invoke_agents_workflow,
             "cleanup": self.cleanup_workflow,
+            "generate_historical": lambda: SingleTaskWorkflow(
+                "generate_historical", [GenerateHistoricalTask(self.pipeline_facade())]
+            ),
+            "generate_realtime": lambda: SingleTaskWorkflow(
+                "generate_realtime", [GenerateRealtimeTask(self.pipeline_facade())]
+            ),
+            "etl_historical": lambda: SingleTaskWorkflow(
+                "etl_historical", [EtlHistoricalTask(self.pipeline_facade())]
+            ),
+            "etl_cdc": lambda: SingleTaskWorkflow("etl_cdc", [EtlCdcTask(self.pipeline_facade())]),
         }
         provider = workflows.get(name)
         if provider is None:

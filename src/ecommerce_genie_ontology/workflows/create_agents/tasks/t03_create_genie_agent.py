@@ -7,6 +7,7 @@ from ecommerce_genie_ontology.common.constants import (
     AGENT_INSTRUCTIONS,
     SAMPLE_QUESTIONS,
 )
+from ecommerce_genie_ontology.common.constants.fraud_agents import FRAUD_AGENTS, SHARED_TABLES, case_names
 from ecommerce_genie_ontology.common.interfaces.create_agents import CreateAgentsWorkspaceFacade
 from ecommerce_genie_ontology.common.utils.ids import hex32
 
@@ -108,6 +109,38 @@ def serialized_space(fq: str) -> str:
     return json.dumps(payload, separators=(",", ":"))
 
 
+def serialized_fraud_space(star: str, oltp: str, agent: dict) -> str:
+    tables = []
+    for name, kind, description in SHARED_TABLES:
+        identifier = f"{oltp}.{name}" if kind == "oltp" else f"{star}.{name}"
+        tables.append({"identifier": identifier, "description": [description]})
+    names = case_names(agent["case_ids"])  # type: ignore[arg-type]
+    questions = [f"Run fraud case {name}" for name in names]
+    sample_questions = sorted(
+        ({"id": hex32(f"fraud-sample:{agent['id']}:{q}"), "question": [q]} for q in questions),
+        key=lambda item: item["id"],
+    )
+    instructions = (
+        f"You are {agent['title']}. Investigate only: {', '.join(names)}. "
+        "Use OLTP tables and star dims/facts. Return small aggregations (LIMIT 50). "
+        "Never dump full tables."
+    )
+    payload = {
+        "version": 2,
+        "config": {"sample_questions": sample_questions},
+        "data_sources": {"tables": tables},
+        "instructions": {
+            "text_instructions": [
+                {
+                    "id": hex32(f"instructions:fraud:{agent['id']}"),
+                    "content": [instructions],
+                }
+            ]
+        },
+    }
+    return json.dumps(payload, separators=(",", ":"))
+
+
 class CreateGenieAgentTask:
     key = "03_create_genie_agent"
 
@@ -120,7 +153,15 @@ class CreateGenieAgentTask:
         )
         self._facade.certify_and_tag_agent(space_id)
         print(f"Genie agent '{self._facade.agent_title}' ready ({space_id})")
-        print("Attach this id as GENIE_SPACE_ID in .env if you want invoke to skip title lookup.")
+        for agent in FRAUD_AGENTS:
+            fraud_id = self._facade.upsert_genie_agent(
+                serialized_fraud_space(self._facade.fq_schema, self._facade.fq_oltp, agent),
+                str(agent["description"]),
+                title=str(agent["title"]),
+            )
+            self._facade.certify_and_tag_agent(fraud_id)
+            print(f"Genie fraud agent '{agent['title']}' ready ({fraud_id})")
+        print("Attach the retail analytics id as GENIE_SPACE_ID in .env if you want invoke to skip title lookup.")
 
 
 def run(facade: CreateAgentsWorkspaceFacade) -> None:

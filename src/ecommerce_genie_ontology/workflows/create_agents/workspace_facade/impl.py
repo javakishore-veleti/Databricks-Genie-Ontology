@@ -56,11 +56,17 @@ class CreateAgentsWorkspaceFacadeImpl:
     def fq_schema(self) -> str:
         return self._session.fq_schema
 
+    @property
+    def fq_oltp(self) -> str:
+        return self._session.context.fq_oltp
+
     def sql(self, statement: str) -> Any:
         return self._sql.execute(statement)
 
-    def upsert_genie_agent(self, serialized_space: str, description: str) -> str:
-        return self._genie.upsert_agent(serialized_space, description)
+    def upsert_genie_agent(
+        self, serialized_space: str, description: str, title: str | None = None
+    ) -> str:
+        return self._genie.upsert_agent(serialized_space, description, title=title)
 
     def certify_and_tag_agent(self, space_id: str) -> None:
         self._genie.certify_and_tag_agent(space_id)

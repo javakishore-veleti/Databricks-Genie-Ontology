@@ -1,0 +1,66 @@
+name: Generate Realtime Orders Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      count:
+        description: New orders to append (100-10000)
+        required: true
+        default: "1000"
+        type: choice
+        options:
+          - "100"
+          - "250"
+          - "500"
+          - "1000"
+          - "2500"
+          - "5000"
+          - "10000"
+      year_window:
+        description: Place new orders in this lookback window
+        required: true
+        default: latest
+        type: choice
+        options:
+          - latest
+          - last_2
+          - last_3
+          - all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: databricks-oltp-cdc
+  cancel-in-progress: false
+
+jobs:
+  generate-realtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      DATABRICKS_ACCOUNT_ID: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
+      DATABRICKS_ACCOUNT_HOST: ${{ secrets.DATABRICKS_ACCOUNT_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_WORKSPACE_NAME: ${{ secrets.DATABRICKS_WORKSPACE_NAME }}
+      DATABRICKS_AWS_REGION: ${{ secrets.DATABRICKS_AWS_REGION }}
+      DATABRICKS_WORKSPACE_ADMIN_EMAILS: ${{ secrets.DATABRICKS_WORKSPACE_ADMIN_EMAILS }}
+      DATABRICKS_WAREHOUSE_NAME: ${{ secrets.DATABRICKS_WAREHOUSE_NAME }}
+      DATABRICKS_CATALOG: ${{ secrets.DATABRICKS_CATALOG }}
+      DATABRICKS_SCHEMA: ${{ secrets.DATABRICKS_SCHEMA }}
+      DATABRICKS_OLTP_SCHEMA: ${{ secrets.DATABRICKS_OLTP_SCHEMA }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Databricks env
+        uses: ./.github/actions/setup-databricks
+      - name: Deploy Spark jobs
+        run: uv run genie-ontology deploy
+      - name: Generate realtime OLTP orders
+        run: >
+          uv run genie-ontology run generate_realtime --as-job
+          --count "${{ inputs.count }}"
+          --year-window "${{ inputs.year_window }}"

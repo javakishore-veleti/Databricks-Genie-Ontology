@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from ecommerce_genie_ontology.common.utils.env import env_emails, load_env, optional_env
+from ecommerce_genie_ontology.common.utils.env import env_emails, load_env, optional_env, optional_int
 
 
 @dataclass(frozen=True)
@@ -15,6 +15,10 @@ class Settings:
     workspace_name: str
     catalog: str
     schema: str
+    oltp_schema: str
+    customer_count: int
+    orders_per_year: int
+    year_count: int
     admin_emails: tuple[str, ...]
     workspace_path: str
     agent_title: str
@@ -29,6 +33,10 @@ class Settings:
     @property
     def fq_schema(self) -> str:
         return f"{self.catalog}.{self.schema}"
+
+    @property
+    def fq_oltp(self) -> str:
+        return f"{self.catalog}.{self.oltp_schema}"
 
     @property
     def package_workspace_path(self) -> str:
@@ -57,6 +65,10 @@ class Settings:
             workspace_name=optional_env("DATABRICKS_WORKSPACE_NAME", "ecommerce-genie-ontology"),
             catalog=optional_env("DATABRICKS_CATALOG", "ecommerce_genie_ontology"),
             schema=optional_env("DATABRICKS_SCHEMA", "retail_demo"),
+            oltp_schema=optional_env("DATABRICKS_OLTP_SCHEMA", "retail_oltp"),
+            customer_count=optional_int("DATABRICKS_OLTP_CUSTOMERS", 200),
+            orders_per_year=optional_int("DATABRICKS_OLTP_ORDERS_PER_YEAR", 25000),
+            year_count=optional_int("DATABRICKS_OLTP_YEARS", 3),
             admin_emails=env_emails("DATABRICKS_WORKSPACE_ADMIN_EMAILS"),
             workspace_path=optional_env(
                 "DATABRICKS_WORKSPACE_PATH", "/Workspace/Shared/ecommerce-genie-ontology"

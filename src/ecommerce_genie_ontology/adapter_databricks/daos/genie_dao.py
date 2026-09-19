@@ -23,23 +23,30 @@ class GenieDao:
                 break
         return spaces
 
-    def find_space(self) -> Any | None:
-        if self._session.space_id:
+    def find_space(self, title: str | None = None) -> Any | None:
+        wanted = title or self._session.agent_title
+        if title is None and self._session.space_id:
             return self._session.workspace.genie.get_space(
                 self._session.space_id, include_serialized_space=True
             )
         for space in self.list_spaces():
-            if space.title == self._session.agent_title:
+            if space.title == wanted:
                 return space
         return None
 
-    def create_or_update_space(self, serialized_space: str, description: str) -> Any:
-        existing = self.find_space()
+    def create_or_update_space(
+        self,
+        serialized_space: str,
+        description: str,
+        title: str | None = None,
+    ) -> Any:
+        space_title = title or self._session.agent_title
+        existing = self.find_space(space_title)
         parent_path = self._session.parent_path or None
         if existing and existing.space_id:
             return self._session.workspace.genie.update_space(
                 space_id=existing.space_id,
-                title=self._session.agent_title,
+                title=space_title,
                 description=description,
                 warehouse_id=self._session.warehouse_id,
                 serialized_space=serialized_space,
@@ -48,7 +55,7 @@ class GenieDao:
         return self._session.workspace.genie.create_space(
             warehouse_id=self._session.warehouse_id,
             serialized_space=serialized_space,
-            title=self._session.agent_title,
+            title=space_title,
             description=description,
             parent_path=parent_path,
         )

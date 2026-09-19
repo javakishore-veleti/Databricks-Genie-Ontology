@@ -1,0 +1,39 @@
+name: Run ETL Star Schema - Historical Data
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: databricks-etl-historical
+  cancel-in-progress: false
+
+jobs:
+  etl-historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      DATABRICKS_ACCOUNT_ID: ${{ secrets.DATABRICKS_ACCOUNT_ID }}
+      DATABRICKS_ACCOUNT_HOST: ${{ secrets.DATABRICKS_ACCOUNT_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_WORKSPACE_NAME: ${{ secrets.DATABRICKS_WORKSPACE_NAME }}
+      DATABRICKS_AWS_REGION: ${{ secrets.DATABRICKS_AWS_REGION }}
+      DATABRICKS_WORKSPACE_ADMIN_EMAILS: ${{ secrets.DATABRICKS_WORKSPACE_ADMIN_EMAILS }}
+      DATABRICKS_WAREHOUSE_NAME: ${{ secrets.DATABRICKS_WAREHOUSE_NAME }}
+      DATABRICKS_CATALOG: ${{ secrets.DATABRICKS_CATALOG }}
+      DATABRICKS_SCHEMA: ${{ secrets.DATABRICKS_SCHEMA }}
+      DATABRICKS_OLTP_SCHEMA: ${{ secrets.DATABRICKS_OLTP_SCHEMA }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Databricks env
+        uses: ./.github/actions/setup-databricks
+      - name: Deploy Spark jobs
+        run: uv run genie-ontology deploy
+      - name: ETL historical star schema
+        run: uv run genie-ontology run etl_historical --as-job
