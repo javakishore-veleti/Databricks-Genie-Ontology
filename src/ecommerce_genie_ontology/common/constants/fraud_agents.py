@@ -20,9 +20,12 @@ SHARED_TABLES = (
     ("dim_account", "star", "Customer accounts"),
     ("dim_transaction_type", "star", "Funds-movement type codes"),
     ("dim_counterparty", "star", "Bank, brokerage, or card issuer on a posting"),
-    ("fact_sales", "star", "Sales facts aligned to OLTP lines"),
+    ("dim_region", "star", "Conformed region for home, billing, and shipping"),
+    ("dim_address", "star", "Billing, shipping, home, and Case 15 far-region addresses"),
+    ("fact_order_event", "star", "Current order-grain fraud fact: hour-level ts, ship/bill regions"),
+    ("fact_sales", "star", "STALE merchandising sales fact (order line). Do not use for fraud."),
     ("fact_returns", "star", "Returns derived from cancelled orders"),
-    ("fact_inventory", "star", "Inventory snapshots by product"),
+    ("fact_inventory", "star", "STALE monthly inventory snapshot. Do not use for geo or velocity."),
     ("fact_transaction", "star", "One row per posting"),
 )
 
@@ -73,7 +76,7 @@ FRAUD_AGENTS: tuple[dict[str, object], ...] = (
         "id": "inventory",
         "title": "Fraud Inventory Agent",
         "case_ids": ("11",),
-        "description": "Orders versus inventory mismatch on facts.",
+        "description": "Orders versus STALE fact_inventory. Prefer fact_order_event for customer fraud.",
     },
     {
         "id": "cancel",
@@ -87,34 +90,17 @@ FRAUD_AGENTS: tuple[dict[str, object], ...] = (
         "case_ids": ("15",),
         "description": "Impossible geography: two regions on the same customer in a short window.",
         "instructions": (
-            "Fraud Case 15: Impossible Geo - No Data Available\n"
-            "I attempted to investigate fraud case 15 (Impossible geo - two regions one hour), "
-            "which would identify customers conducting transactions in geographically distant "
-            "locations within an impossibly short timeframe. However, all tables in the database "
-            "are currently empty and contain no data to analyze.\n"
-            "\n"
-            "What This Analysis Would Detect\n"
-            "If data were available, this fraud case would identify:\n"
-            "Customers with transactions in multiple regions within 1 hour - indicating potential "
-            "account compromise where fraudsters are using stolen credentials from a different "
-            "location than the legitimate account holder\n"
-            "Geographic impossibility patterns - transactions that would require physically "
-            "impossible travel times between locations\n"
-            "High-risk region pairs - specific geographic combinations that frequently appear "
-            "in fraud cases\n"
-            "Repeat offenders - customers with multiple instances of impossible geo activity\n"
-            "\n"
-            "Required Data\n"
-            "To run this analysis, the system would need:\n"
-            "Transaction records with timestamps (customer_transaction table)\n"
-            "Customer home regions (customer table)\n"
-            "Order shipping/billing addresses with regions (customer_order and customer_address tables)\n"
-            "Or pre-computed fraud analytics results (analytics_log_customer table)\n"
-            "\n"
-            "Next Steps\n"
-            "Please load transaction and customer data into the database to enable fraud detection "
-            "analysis. Once data is available, I can identify suspicious impossible geo patterns "
-            "and flag high-risk accounts for review."
+            "You are Fraud Geo Agent. Investigate Case 15 Impossible geo — two shipping "
+            "regions within one hour.\n"
+            "Join retail_star.fact_order_event to itself on customer_key where "
+            "shipping_region_key differs and order_ts is at most 60 minutes apart. "
+            "Prefer mv_order_event when you only need counts.\n"
+            "Do not use customer.region (home, static). Do not use fact_sales or "
+            "fact_inventory — those are STALE merchandising snapshots with midnight "
+            "dates and no shipping address.\n"
+            "Seeded customers have address_id *-AGEO (West vs Northeast) and a pair of "
+            "orders 25 minutes apart. Report customer_key, both order ids, regions, "
+            "timestamps, and minutes_apart. LIMIT 50. Do not say the tables are empty."
         ),
         "sample_questions": (
             "Run fraud case 15 Impossible geo two regions one hour",

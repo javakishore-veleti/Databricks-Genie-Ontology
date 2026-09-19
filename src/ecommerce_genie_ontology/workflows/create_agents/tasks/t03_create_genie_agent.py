@@ -23,13 +23,19 @@ def serialized_space(fq: str) -> str:
         {
             "identifier": f"{fq}.mv_inventory_health",
             "description": [
-                "Certified inventory-health measures: average stock on hand, units received, low-stock snapshots."
+                "STALE inventory-health measures from fact_inventory. Do not use for fraud geo."
+            ],
+        },
+        {
+            "identifier": f"{fq}.mv_order_event",
+            "description": [
+                "Current order-grain measures: order count, amount, ship-to≠bill-to, cross-region. Use for fraud."
             ],
         },
         {
             "identifier": f"{fq}.mv_sales_performance",
             "description": [
-                "Certified sales-performance measures: total revenue, units sold, order count, average order value."
+                "STALE merchandising sales-performance measures from fact_sales. Not for same-hour geo."
             ],
         },
     ]

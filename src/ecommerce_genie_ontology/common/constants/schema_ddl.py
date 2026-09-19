@@ -208,7 +208,7 @@ CREATE TABLE IF NOT EXISTS {fq}.fact_sales (
   unit_price   DECIMAL(10,2)          COMMENT 'Realized selling price per unit, in USD',
   revenue      DECIMAL(12,2)          COMMENT 'quantity * unit_price - gross revenue in USD for this line'
 )
-COMMENT 'Sales fact table, one row per order line item. Grain: one order line.'
+COMMENT 'STALE merchandising sales fact (order-line grain). Do not use for fraud. Use fact_order_event.'
 """,
         f"""
 CREATE TABLE IF NOT EXISTS {fq}.fact_returns (
@@ -231,9 +231,66 @@ CREATE TABLE IF NOT EXISTS {fq}.fact_inventory (
   stock_on_hand     INT          COMMENT 'Units on hand at the snapshot date',
   stock_received    INT          COMMENT 'Units received into stock since the prior snapshot'
 )
-COMMENT 'Monthly inventory snapshot fact table. Grain: one product/store/month.'
+COMMENT 'STALE monthly inventory snapshot (product/store/month). Do not use for fraud. Case 11 only if forced.'
 """,
     ]
+
+
+def fraud_star_statements(fq: str) -> list[str]:
+    return [
+        f"""
+CREATE TABLE IF NOT EXISTS {fq}.dim_region (
+  region_key  INT    NOT NULL COMMENT 'Surrogate key for a sales / shipping region',
+  region_name STRING NOT NULL COMMENT 'Northeast, Southeast, Midwest, Southwest, or West'
+)
+COMMENT 'Conformed region dimension for home, billing, and shipping geography.'
+""",
+        f"""
+CREATE TABLE IF NOT EXISTS {fq}.dim_address (
+  address_key   INT     NOT NULL COMMENT 'Surrogate key for an OLTP customer_address row',
+  address_id    STRING  NOT NULL COMMENT 'OLTP address_id',
+  customer_key  INT              COMMENT 'FK to dim_customer.customer_key',
+  address_type  STRING           COMMENT 'billing, shipping, home, or AGEO far-region seed',
+  city          STRING           COMMENT 'City',
+  region_key    INT              COMMENT 'FK to dim_region.region_key',
+  postal_code   STRING           COMMENT 'Postal code',
+  is_primary    BOOLEAN          COMMENT 'True for the customer primary address'
+)
+COMMENT 'Address dimension. Required for ship-to vs bill-to and impossible-geo (Case 15).'
+""",
+        f"""
+CREATE TABLE IF NOT EXISTS {fq}.fact_order_event (
+  order_id              STRING        NOT NULL COMMENT 'OLTP order_id',
+  date_key              INT           NOT NULL COMMENT 'FK to dim_date.date_key',
+  order_hour            INT                    COMMENT 'Hour of order_ts (0-23)',
+  order_ts              TIMESTAMP              COMMENT 'Hour-level order timestamp',
+  customer_key          INT           NOT NULL COMMENT 'FK to dim_customer.customer_key',
+  store_key             INT                    COMMENT 'FK to dim_store.store_key',
+  billing_address_key   INT                    COMMENT 'FK to dim_address.address_key',
+  shipping_address_key  INT                    COMMENT 'FK to dim_address.address_key',
+  billing_region_key    INT                    COMMENT 'FK to dim_region.region_key',
+  shipping_region_key   INT                    COMMENT 'FK to dim_region.region_key',
+  order_amount          DECIMAL(12,2)          COMMENT 'Order amount in USD',
+  status                STRING                 COMMENT 'OLTP order status',
+  ship_ne_bill          BOOLEAN                COMMENT 'True when shipping address differs from billing',
+  cross_region          BOOLEAN                COMMENT 'True when shipping region differs from billing region'
+)
+COMMENT 'Fraud-current order-grain fact. Use for velocity, ship-to≠bill-to, and Case 15 impossible geo.'
+""",
+    ]
+
+
+def dim_region_seed(fq: str) -> str:
+    return f"""
+CREATE OR REPLACE TABLE {fq}.dim_region AS
+SELECT * FROM VALUES
+  (1, 'Northeast'),
+  (2, 'Southeast'),
+  (3, 'Midwest'),
+  (4, 'Southwest'),
+  (5, 'West')
+AS t(region_key, region_name)
+"""
 
 
 def analytics_statements(fq: str) -> list[str]:
@@ -265,6 +322,7 @@ CREATE TABLE IF NOT EXISTS {fq}.analytics_log_customer (
   fact_returns_count BIGINT,
   fact_inventory_count BIGINT,
   fact_transaction_count BIGINT,
+  fact_order_event_count BIGINT,
   analytics_outcome STRING,
   analytics_log_info STRING,
   updated_at TIMESTAMP

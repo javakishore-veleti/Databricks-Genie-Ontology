@@ -18,6 +18,8 @@ ADDRESS_TYPES = ["billing", "shipping", "home"]
 CHANNELS = ["Online", "In-Store"]
 STATUSES = ["placed", "paid", "shipped", "delivered", "cancelled"]
 CARRIERS = ["UPS", "FedEx", "USPS", "DHL"]
+CASE15_CUSTOMERS = 20
+CASE15_ADDR_SUFFIX = "AGEO"
 
 
 def history_start(today: date, year_count: int) -> date:
@@ -141,7 +143,14 @@ def generate_historical(
             ),
         )
         .withColumn("day_off", (F.col("id") % days).cast("int"))
-        .withColumn("txn_ts", F.to_timestamp(F.date_add(F.lit(str(start)), F.col("day_off"))))
+        .withColumn(
+            "txn_ts",
+            F.from_unixtime(
+                F.unix_timestamp(F.date_add(F.lit(str(start)), F.col("day_off")))
+                + (F.col("id") % 24) * 3600
+                + ((F.col("id") * 7) % 60) * 60
+            ).cast("timestamp"),
+        )
         .withColumn("txn_date", F.to_date("txn_ts"))
         .withColumn("amount", ((F.col("id") % 240) * 5 + 25).cast("decimal(12,2)"))
         .withColumn("balance_before", ((F.col("id") % 4000) * 3 + 200).cast("decimal(14,2)"))
@@ -157,7 +166,14 @@ def generate_historical(
         .withColumn("customer_id", F.format_string("C%06d", F.col("customer_seq") + 1))
         .withColumn("order_id", F.format_string("O%012d", F.col("id") + 1))
         .withColumn("day_off", (F.col("id") % days).cast("int"))
-        .withColumn("order_ts", F.to_timestamp(F.date_add(F.lit(str(start)), F.col("day_off"))))
+        .withColumn(
+            "order_ts",
+            F.from_unixtime(
+                F.unix_timestamp(F.date_add(F.lit(str(start)), F.col("day_off")))
+                + (F.col("id") % 24) * 3600
+                + ((F.col("id") * 11) % 60) * 60
+            ).cast("timestamp"),
+        )
         .withColumn("status", F.element_at(F.array(*[F.lit(s) for s in STATUSES]), (F.col("id") % 5 + 1).cast("int")))
         .withColumn("store_id", (F.col("id") % 10 + 1).cast("int"))
         .withColumn("billing_address_id", F.concat(F.col("customer_id"), F.lit("-A0")))
@@ -201,6 +217,7 @@ def generate_historical(
     )
     shipments.write.mode("overwrite").saveAsTable(f"{fq}.customer_order_shipment")
 
+    seed_case15(spark, fq, start)
     _write_entity_links(spark, fq)
     from ecommerce_genie_ontology.adapter_databricks.spark.ingest import snapshot_oltp
 
@@ -243,7 +260,14 @@ def generate_realtime(
         .withColumn("customer_seq", (F.col("id") % n_customers).cast("int"))
         .join(customers, "customer_seq", "left")
         .withColumn("order_id", F.format_string("O%012d", F.col("seq")))
-        .withColumn("order_ts", F.to_timestamp(F.date_add(F.lit(str(start)), (F.col("id") % days).cast("int"))))
+        .withColumn(
+            "order_ts",
+            F.from_unixtime(
+                F.unix_timestamp(F.date_add(F.lit(str(start)), (F.col("id") % days).cast("int")))
+                + (F.col("id") % 24) * 3600
+                + ((F.col("id") * 11) % 60) * 60
+            ).cast("timestamp"),
+        )
         .withColumn("status", F.lit("placed"))
         .withColumn("store_id", (F.col("id") % 10 + 1).cast("int"))
         .withColumn("billing_address_id", F.concat(F.col("customer_id"), F.lit("-A0")))
@@ -311,7 +335,14 @@ def generate_realtime(
                 (F.col("id") % len(counterparties) + 1).cast("int"),
             ),
         )
-        .withColumn("txn_ts", F.to_timestamp(F.date_add(F.lit(str(start)), (F.col("id") % days).cast("int"))))
+        .withColumn(
+            "txn_ts",
+            F.from_unixtime(
+                F.unix_timestamp(F.date_add(F.lit(str(start)), (F.col("id") % days).cast("int")))
+                + (F.col("id") % 24) * 3600
+                + ((F.col("id") * 7) % 60) * 60
+            ).cast("timestamp"),
+        )
         .withColumn("txn_date", F.to_date("txn_ts"))
         .withColumn("amount", ((F.col("id") % 240) * 5 + 25).cast("decimal(12,2)"))
         .withColumn("balance_before", ((F.col("id") % 4000) * 3 + 200).cast("decimal(14,2)"))
@@ -332,7 +363,108 @@ def generate_realtime(
         )
     )
     new_postings.write.mode("append").saveAsTable(f"{fq}.customer_transaction")
+    seed_case15(spark, fq, start)
     return {"orders": n, "lines": n * 3, "postings": n, "year_window": year_window}
+
+
+def seed_case15(spark, fq: str, event_date: date) -> int:
+    """Add a far-region shipping address and two orders 25 minutes apart for Case 15."""
+    from pyspark.sql import functions as F
+    from pyspark.sql.window import Window
+
+    already = (
+        spark.table(f"{fq}.customer_order")
+        .filter(F.col("shipping_address_id").endswith(f"-{CASE15_ADDR_SUFFIX}"))
+        .limit(1)
+        .count()
+    )
+    if already:
+        print("OK    Case 15 impossible-geo orders already present")
+        return 0
+
+    customers = (
+        spark.table(f"{fq}.customer")
+        .select("customer_id", "region")
+        .orderBy("customer_id")
+        .limit(CASE15_CUSTOMERS)
+    )
+    far = customers.select(
+        F.concat(F.col("customer_id"), F.lit(f"-{CASE15_ADDR_SUFFIX}")).alias("address_id"),
+        "customer_id",
+        F.lit("shipping").alias("address_type"),
+        F.concat(F.lit("900 Distant Ave "), F.col("customer_id")).alias("line1"),
+        F.lit("Remote City").alias("city"),
+        F.when(F.col("region") == "West", F.lit("Northeast")).otherwise(F.lit("West")).alias("region"),
+        F.lit("99999").alias("postal_code"),
+        F.lit(False).alias("is_primary"),
+    )
+    have = spark.table(f"{fq}.customer_address").select("address_id")
+    new_addr = far.join(have, "address_id", "left_anti")
+    added_addr = new_addr.count()
+    if added_addr:
+        new_addr.write.mode("append").saveAsTable(f"{fq}.customer_address")
+        print(f"OK    Case 15 far-region addresses: {added_addr}")
+
+    targets = (
+        spark.table(f"{fq}.customer_address")
+        .filter(F.col("address_id").endswith(f"-{CASE15_ADDR_SUFFIX}"))
+        .select("customer_id", "address_id")
+        .orderBy("customer_id")
+    )
+    n = targets.count()
+    if n == 0:
+        return 0
+    max_order = spark.sql(
+        f"SELECT COALESCE(MAX(CAST(substring(order_id, 2) AS BIGINT)), 0) AS m FROM {fq}.customer_order"
+    ).collect()[0]["m"]
+    base = targets.withColumn("rn", F.row_number().over(Window.orderBy("customer_id")) - 1)
+    home = base.select(
+        F.format_string("O%012d", F.lit(int(max_order)) + F.col("rn") * 2 + 1).alias("order_id"),
+        "customer_id",
+        F.to_timestamp(F.lit(f"{event_date.isoformat()} 10:00:00")).alias("order_ts"),
+        F.lit("paid").alias("status"),
+        F.lit(1).alias("store_id"),
+        F.concat(F.col("customer_id"), F.lit("-A0")).alias("billing_address_id"),
+        F.concat(F.col("customer_id"), F.lit("-A0")).alias("shipping_address_id"),
+        F.lit("188.00").cast("decimal(12,2)").alias("order_amount"),
+    )
+    distant = base.select(
+        F.format_string("O%012d", F.lit(int(max_order)) + F.col("rn") * 2 + 2).alias("order_id"),
+        "customer_id",
+        F.to_timestamp(F.lit(f"{event_date.isoformat()} 10:25:00")).alias("order_ts"),
+        F.lit("paid").alias("status"),
+        F.lit(1).alias("store_id"),
+        F.concat(F.col("customer_id"), F.lit("-A0")).alias("billing_address_id"),
+        F.col("address_id").alias("shipping_address_id"),
+        F.lit("412.00").cast("decimal(12,2)").alias("order_amount"),
+    )
+    orders = home.unionByName(distant)
+    orders.write.mode("append").saveAsTable(f"{fq}.customer_order")
+    lines = (
+        orders.select("order_id")
+        .withColumn("line_n", F.lit(0))
+        .select(
+            F.concat(F.col("order_id"), F.lit("-L0")).alias("order_line_id"),
+            "order_id",
+            F.lit("SKU-015").alias("sku"),
+            F.lit(1).alias("quantity"),
+            F.lit("99.00").cast("decimal(10,2)").alias("unit_price"),
+            F.lit("99.00").cast("decimal(12,2)").alias("line_amount"),
+        )
+    )
+    lines.write.mode("append").saveAsTable(f"{fq}.customer_order_line")
+    shipments = orders.select(
+        F.concat(F.col("order_id"), F.lit("-S0")).alias("shipment_id"),
+        "order_id",
+        (F.col("order_ts") + F.expr("INTERVAL 2 DAYS")).alias("ship_ts"),
+        F.lit("FedEx").alias("carrier"),
+        F.concat(F.lit("TRK"), F.col("order_id")).alias("tracking_number"),
+        F.lit("in_transit").alias("status"),
+        F.col("shipping_address_id").alias("ship_address_id"),
+    )
+    shipments.write.mode("append").saveAsTable(f"{fq}.customer_order_shipment")
+    print(f"OK    Case 15 impossible-geo orders: {n * 2} (25 minutes, West vs Northeast)")
+    return n * 2
 
 
 def _write_entity_links(spark, fq: str) -> None:

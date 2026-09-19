@@ -102,7 +102,7 @@ INSERT INTO {oltp}.analytics_log (
 INSERT INTO {oltp}.analytics_log_customer (
   analytics_id, customer_id, order_count, order_line_count, shipment_count, posting_count,
   address_count, account_count, fact_sales_count, fact_returns_count, fact_inventory_count,
-  fact_transaction_count, analytics_outcome, analytics_log_info, updated_at
+  fact_transaction_count, fact_order_event_count, analytics_outcome, analytics_log_info, updated_at
 )
 WITH ids AS ({_customer_ids_sql(oltp, start, end)}),
 orders AS (
@@ -152,6 +152,12 @@ txns AS (
   FROM {star}.fact_transaction
   WHERE date_key BETWEEN {lo} AND {hi}
   GROUP BY customer_key
+),
+events AS (
+  SELECT CONCAT('C', LPAD(CAST(customer_key AS STRING), 6, '0')) AS customer_id, COUNT(*) AS n
+  FROM {star}.fact_order_event
+  WHERE date_key BETWEEN {lo} AND {hi}
+  GROUP BY customer_key
 )
 SELECT
   {sql_string(analytics_id)},
@@ -166,6 +172,7 @@ SELECT
   COALESCE(returns.n, 0),
   0,
   COALESCE(txns.n, 0),
+  COALESCE(events.n, 0),
   'pending',
   '{{}}',
   current_timestamp()
@@ -179,6 +186,7 @@ LEFT JOIN accounts ON accounts.customer_id = ids.customer_id
 LEFT JOIN sales ON sales.customer_id = ids.customer_id
 LEFT JOIN returns ON returns.customer_id = ids.customer_id
 LEFT JOIN txns ON txns.customer_id = ids.customer_id
+LEFT JOIN events ON events.customer_id = ids.customer_id
 """
     )
     count_row = _as_rows(
@@ -341,6 +349,19 @@ LIMIT 25
         ),
         25,
     )
+    events = _as_rows(
+        execute(
+            f"""
+SELECT order_id, date_key, order_hour, order_ts, customer_key, shipping_region_key,
+       billing_region_key, order_amount, status, ship_ne_bill, cross_region
+FROM {star}.fact_order_event
+WHERE customer_key = {key} AND date_key BETWEEN {lo} AND {hi}
+ORDER BY order_ts DESC
+LIMIT 25
+"""
+        ),
+        25,
+    )
     txns = _as_rows(
         execute(
             f"""
@@ -354,7 +375,7 @@ LIMIT 25
         ),
         25,
     )
-    return {"fact_sales": sales, "fact_transaction": txns}
+    return {"fact_order_event": events, "fact_sales": sales, "fact_transaction": txns}
 
 
 def get_customer_analytics(
@@ -395,7 +416,12 @@ LIMIT 1
         analytics_id=analytics_id,
         customer_id=customer_id,
     )
-    evidence = (oltp_rows["orders"] + oltp_rows["postings"] + star_rows["fact_sales"] + star_rows["fact_transaction"])[:50]
+    evidence = (
+        oltp_rows["orders"]
+        + oltp_rows["postings"]
+        + star_rows["fact_order_event"]
+        + star_rows["fact_transaction"]
+    )[:50]
     return {
         "customer": rows[0],
         "oltp": oltp_rows,

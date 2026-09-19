@@ -233,7 +233,7 @@ def get_customer_oltp(analytics_id: str, customer_id: str) -> dict:
 
 
 def get_customer_star(analytics_id: str, customer_id: str) -> dict:
-    """At most 25 sales facts and 25 posting facts for one customer in the session window."""
+    """At most 25 order-event facts and 25 posting facts for one customer in the session window."""
     return analytics_session.get_customer_star(
         _sql().execute,
         **_analytics_args(),

@@ -276,6 +276,77 @@ $$
 """
     )
     print(f"Created {fq}.mv_inventory_health")
+
+    facade.sql(
+        f"""
+CREATE OR REPLACE VIEW {fq}.mv_order_event
+WITH METRICS
+LANGUAGE YAML
+AS $$
+version: 1.1
+
+source: {fq}.fact_order_event
+
+joins:
+  - name: date
+    source: {fq}.dim_date
+    on: source.date_key = date.date_key
+  - name: customer
+    source: {fq}.dim_customer
+    on: source.customer_key = customer.customer_key
+  - name: ship_region
+    source: {fq}.dim_region
+    on: source.shipping_region_key = ship_region.region_key
+  - name: bill_region
+    source: {fq}.dim_region
+    on: source.billing_region_key = bill_region.region_key
+
+dimensions:
+  - name: order_date
+    expr: date.calendar_date
+    display_name: "Order Date"
+  - name: order_hour
+    expr: source.order_hour
+    display_name: "Order Hour"
+    synonyms: ["hour"]
+  - name: customer_segment
+    expr: customer.segment
+    display_name: "Customer Segment"
+  - name: shipping_region
+    expr: ship_region.region_name
+    display_name: "Shipping Region"
+    synonyms: ["ship region", "delivery region"]
+  - name: billing_region
+    expr: bill_region.region_name
+    display_name: "Billing Region"
+  - name: order_status
+    expr: source.status
+    display_name: "Order Status"
+
+measures:
+  - name: order_count
+    expr: COUNT(1)
+    display_name: "Order Count"
+  - name: order_amount
+    expr: SUM(source.order_amount)
+    display_name: "Order Amount"
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+  - name: ship_ne_bill_count
+    expr: SUM(CASE WHEN source.ship_ne_bill THEN 1 ELSE 0 END)
+    display_name: "Ship-to not Bill-to Count"
+  - name: cross_region_count
+    expr: SUM(CASE WHEN source.cross_region THEN 1 ELSE 0 END)
+    display_name: "Cross Region Order Count"
+    synonyms: ["impossible geo candidates"]
+$$
+"""
+    )
+    print(f"Created {fq}.mv_order_event")
     print("Done. Next: certify + domain-tag assets, then create the Genie agent.")
 
 

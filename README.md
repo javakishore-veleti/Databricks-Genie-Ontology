@@ -61,7 +61,7 @@ Template URLs only — replace the `{placeholders}`:
 | 4 | 01 - Setup - Step 04 - Publish Discover domains | 1–3 min | Discover cards for Sales, Customer, Supply Chain, Finance are **Published** | [Domain API](https://docs.databricks.com/api/domains/v1/domain) `POST/PATCH /api/discover/v1/domains`. Needs **MANAGE DISCOVERY** (workspace admin). Then `https://{WORKSPACE_HOST}/search/discover`. Pages are created when that API accepts the payload. |
 | 5 | 01 - Setup - Step 05 - Invoke Retail Analytics Genie | **3 min** | Sample questions return SQL + a short answer | Measured 3 min 14 s. Confirms Genie MCP on the retail space. Optional question input. |
 | 6 | 01 - Setup - Step 06 - Populate next 100000 OLTP rows | 10–40 min | `ingestion_tracker` / `ingestion_log`; row counts on `customer_order` and `customer_transaction` | Catalog `https://{WORKSPACE_HOST}/explore/data/{CATALOG}`. Default 100,000 rows. Repeat until `caught_up`. |
-| 7 | 01 - Setup - Step 07 - Populate next N months of dims and facts | 10–30 min | `fact_sales`, `fact_returns`, `fact_inventory`, `fact_transaction` grow for that window | Same catalog. Months 1–12 (default 3). No error if less OLTP remains. |
+| 7 | 01 - Setup - Step 07 - Populate next N months of dims and facts | 10–30 min | `fact_order_event` plus STALE `fact_sales` / `fact_inventory` | Same catalog. Months 1–12 (default 3). Fraud reads `fact_order_event`. |
 | 8 | 01 - Setup - Step 08 - Pipeline next 100000 OLTP and next N months star | 20–60 min | Step 06 then Step 07 in one run | Use this instead of running 06 and 07 separately. |
 | 9 | 02 - Fraud Agent - 01 - Fraud Velocity Agent | 3–10 min | Space **Fraud Velocity Agent** | Genie MCP for velocity bursts and split orders. |
 | 10 | 02 - Fraud Agent - 02 - Fraud Address Link Agent | 3–10 min | Space **Fraud Address Link Agent** | Shared-address / duplicate-account hops. |
@@ -216,7 +216,9 @@ before/after.
 | Rare events + fewer false positives | Rare-event — peer baselines, not a blanket dollar threshold |
 | Feature importance / explainability | Explain the why — amount, velocity, address; not a black box |
 
-**Sales star** — each row is one sales line (one product on one order).
+**Order-event star (current, fraud)** — each row is one `customer_order` with hour-level `order_ts`, billing/shipping `dim_address`, and `dim_region`. Use this for velocity, ship-to≠bill-to, and Case 15 impossible geo (`mv_order_event`).
+
+**Sales star (STALE)** — each row is one sales line (one product on one order). Kept for Retail Analytics merchandising history only. No hour, no shipping region. Do not use for fraud.
 
 ![Sales star schema](docs/images/star-schema-sales.png)
 
@@ -224,7 +226,7 @@ before/after.
 
 ![Returns star schema](docs/images/star-schema-returns.png)
 
-**Inventory star** — each row is how many units of one product a store had on one day (so you can compare sales to stock).
+**Inventory star (STALE)** — monthly product/store snapshot. Kept so `mv_inventory_health` still answers stock questions. Not a customer-fraud grain. Case 11 is the only fraud agent that may still join it.
 
 ![Inventory star schema](docs/images/star-schema-inventory.png)
 
@@ -240,10 +242,12 @@ before/after.
 - `close_analytics` — status `Completed`
 - Genie in the workspace; LangGraph / Google ADK / AWS Strands via FastAPI → MCP, not raw tables
 
-**Dims to add (few, conformed)**
+**Dims (conformed)**
 
 | Dim | Why |
 |---|---|
+| `dim_region` | Home / billing / shipping geography for Case 15 |
+| `dim_address` | Ship-to vs bill-to and far-region (`*-AGEO`) seed |
 | `dim_transaction_type` | Type signal for funds-movement agents |
 | `dim_account` | Same vs other account; product (checking / CD / card / brokerage) |
 | `dim_counterparty` | Other bank, other person, brokerage |
@@ -653,3 +657,5 @@ Step 04 and provision `t04` create Sales, Customer, Supply Chain, and Finance
 from the existing governed tags. Pages still have no documented public create
 API. Provision stores the same content in `<catalog>.<schema>._ontology_pages`
 and Step 04 retries Discover page endpoints after the parent domain exists.
+Page bodies include **Impossible Geo** and **Order Event Fact**. `fact_sales` and
+`fact_inventory` are documented as STALE merchandising snapshots.

@@ -119,10 +119,26 @@ WHERE status IN ('cancelled')
 GROUP BY status
 """,
         "15": f"""
-SELECT customer_id, COUNT(DISTINCT region) regions
-FROM {oltp}.customer_address
-GROUP BY customer_id
-HAVING COUNT(DISTINCT region) > 1
+WITH pairs AS (
+  SELECT
+    a.customer_key,
+    a.order_id AS order1_id,
+    a.order_ts AS order1_ts,
+    a.shipping_region_key AS region1,
+    b.order_id AS order2_id,
+    b.order_ts AS order2_ts,
+    b.shipping_region_key AS region2,
+    (UNIX_TIMESTAMP(b.order_ts) - UNIX_TIMESTAMP(a.order_ts)) / 60.0 AS minutes_apart
+  FROM {star}.fact_order_event a
+  JOIN {star}.fact_order_event b
+    ON a.customer_key = b.customer_key
+   AND a.shipping_region_key <> b.shipping_region_key
+   AND b.order_ts > a.order_ts
+   AND (UNIX_TIMESTAMP(b.order_ts) - UNIX_TIMESTAMP(a.order_ts)) <= 3600
+  WHERE a.status <> 'cancelled' AND b.status <> 'cancelled'
+)
+SELECT * FROM pairs
+ORDER BY minutes_apart, customer_key
 LIMIT 50
 """,
     }

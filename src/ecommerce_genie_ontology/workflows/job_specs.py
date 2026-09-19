@@ -24,7 +24,7 @@ JOB_DESCRIPTIONS = {
     "generate_historical": "Write 3-year OLTP customer/order history with PySpark.",
     "generate_realtime": "Append 100-10000 new OLTP orders for CDC.",
     "etl_historical": "Rebuild star-schema dims/facts from OLTP.",
-    "etl_cdc": "Apply Delta change feed into fact_sales and fact_transaction.",
+    "etl_cdc": "Apply Delta change feed into fact_sales, fact_order_event, and fact_transaction.",
     "generate_next_oltp": "Append the next 100,000 OLTP rows and update ingestion_tracker / ingestion_log.",
     "etl_next_months": "Append star dims/facts for the next N months from the tracker window.",
 }

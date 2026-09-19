@@ -4,7 +4,9 @@ from datetime import date, datetime
 
 from ecommerce_genie_ontology.common.constants.schema_ddl import (
     dim_counterparty_seed,
+    dim_region_seed,
     dim_transaction_type_seed,
+    fraud_star_statements,
     funds_star_statements,
     sales_star_statements,
 )
@@ -15,6 +17,8 @@ def ensure_star_schema(spark, catalog: str, star_schema: str) -> str:
     star = f"{catalog}.{star_schema}"
     spark.sql(f"CREATE SCHEMA IF NOT EXISTS {star}")
     for sql in sales_star_statements(star):
+        spark.sql(sql)
+    for sql in fraud_star_statements(star):
         spark.sql(sql)
     for sql in funds_star_statements(star):
         spark.sql(sql)
@@ -108,6 +112,7 @@ def refresh_star_dims(spark, catalog: str, star_schema: str, oltp_schema: str) -
     star = ensure_star_schema(spark, catalog, star_schema)
     spark.sql(dim_transaction_type_seed(star))
     spark.sql(dim_counterparty_seed(star))
+    spark.sql(dim_region_seed(star))
 
     start = date(2016, 9, 18)
     end = date(2026, 9, 18)
@@ -179,6 +184,69 @@ def refresh_star_dims(spark, catalog: str, star_schema: str, oltp_schema: str) -
         )
         stores.write.mode("overwrite").saveAsTable(f"{star}.dim_store")
 
+    if spark.catalog.tableExists(f"{oltp}.customer_address"):
+        addresses = (
+            spark.table(f"{oltp}.customer_address")
+            .join(spark.table(f"{star}.dim_region"), F.col("region") == F.col("region_name"), "left")
+            .select(
+                F.abs(F.hash("address_id")).cast("int").alias("address_key"),
+                "address_id",
+                F.regexp_replace("customer_id", "C", "").cast("int").alias("customer_key"),
+                "address_type",
+                "city",
+                "region_key",
+                "postal_code",
+                "is_primary",
+            )
+        )
+        addresses.write.mode("overwrite").saveAsTable(f"{star}.dim_address")
+
+
+def order_event_facts(orders, addresses):
+    from pyspark.sql import functions as F
+
+    ship = addresses.select(
+        F.col("address_id").alias("shipping_address_id"),
+        F.col("address_key").alias("shipping_address_key"),
+        F.col("region_key").alias("shipping_region_key"),
+    )
+    bill = addresses.select(
+        F.col("address_id").alias("billing_address_id"),
+        F.col("address_key").alias("billing_address_key"),
+        F.col("region_key").alias("billing_region_key"),
+    )
+    return (
+        orders.join(ship, "shipping_address_id", "left")
+        .join(bill, "billing_address_id", "left")
+        .withColumn("date_key", F.date_format("order_ts", "yyyyMMdd").cast("int"))
+        .withColumn("order_hour", F.hour("order_ts"))
+        .withColumn("customer_key", F.regexp_replace("customer_id", "C", "").cast("int"))
+        .withColumn("store_key", F.col("store_id"))
+        .withColumn("ship_ne_bill", F.col("shipping_address_id") != F.col("billing_address_id"))
+        .withColumn(
+            "cross_region",
+            F.col("shipping_region_key").isNotNull()
+            & F.col("billing_region_key").isNotNull()
+            & (F.col("shipping_region_key") != F.col("billing_region_key")),
+        )
+        .select(
+            "order_id",
+            "date_key",
+            "order_hour",
+            "order_ts",
+            "customer_key",
+            "store_key",
+            "billing_address_key",
+            "shipping_address_key",
+            "billing_region_key",
+            "shipping_region_key",
+            "order_amount",
+            "status",
+            "ship_ne_bill",
+            "cross_region",
+        )
+    )
+
 
 def etl_historical(spark, catalog: str, star_schema: str, oltp_schema: str) -> None:
     refresh_star_dims(spark, catalog, star_schema, oltp_schema)
@@ -188,6 +256,10 @@ def etl_historical(spark, catalog: str, star_schema: str, oltp_schema: str) -> N
     lines = spark.table(f"{oltp}.customer_order_line")
     sales_facts(lines, orders).write.mode("overwrite").saveAsTable(f"{star}.fact_sales")
     return_facts(orders, lines).write.mode("overwrite").saveAsTable(f"{star}.fact_returns")
+    if spark.catalog.tableExists(f"{star}.dim_address"):
+        order_event_facts(orders, spark.table(f"{star}.dim_address")).write.mode("overwrite").saveAsTable(
+            f"{star}.fact_order_event"
+        )
     inventory_facts(
         spark.table(f"{star}.dim_product"),
         spark.table(f"{star}.dim_store"),

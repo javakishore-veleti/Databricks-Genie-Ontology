@@ -27,7 +27,7 @@ OLTP_TABLES = (
     "customer_transaction",
     "entity_link",
 )
-STAR_TABLES = ("fact_sales", "fact_returns", "fact_inventory", "fact_transaction")
+STAR_TABLES = ("fact_sales", "fact_returns", "fact_inventory", "fact_transaction", "fact_order_event")
 
 
 def add_months(value: date, months: int) -> date:
@@ -297,7 +297,14 @@ def generate_next_oltp(spark, catalog: str, oltp_schema: str, row_count: int = 1
         .withColumn("customer_id", F.format_string("C%06d", F.col("customer_seq") + 1))
         .withColumn("order_id", F.format_string("O%012d", F.col("seq")))
         .withColumn("day_off", (F.col("id") % window_days).cast("int"))
-        .withColumn("order_ts", F.to_timestamp(F.date_add(F.lit(str(next_start)), F.col("day_off"))))
+        .withColumn(
+            "order_ts",
+            F.from_unixtime(
+                F.unix_timestamp(F.date_add(F.lit(str(next_start)), F.col("day_off")))
+                + (F.col("id") % 24) * 3600
+                + ((F.col("id") * 11) % 60) * 60
+            ).cast("timestamp"),
+        )
         .withColumn(
             "status",
             F.element_at(F.array(*[F.lit(s) for s in spark_oltp.STATUSES]), (F.col("id") % 5 + 1).cast("int")),
@@ -367,7 +374,14 @@ def generate_next_oltp(spark, catalog: str, oltp_schema: str, row_count: int = 1
             ),
         )
         .withColumn("day_off", (F.col("id") % window_days).cast("int"))
-        .withColumn("txn_ts", F.to_timestamp(F.date_add(F.lit(str(next_start)), F.col("day_off"))))
+        .withColumn(
+            "txn_ts",
+            F.from_unixtime(
+                F.unix_timestamp(F.date_add(F.lit(str(next_start)), F.col("day_off")))
+                + (F.col("id") % 24) * 3600
+                + ((F.col("id") * 7) % 60) * 60
+            ).cast("timestamp"),
+        )
         .withColumn("txn_date", F.to_date("txn_ts"))
         .withColumn("amount", ((F.col("id") % 240) * 5 + 25).cast("decimal(12,2)"))
         .withColumn("balance_before", ((F.col("id") % 4000) * 3 + 200).cast("decimal(14,2)"))
@@ -388,6 +402,7 @@ def generate_next_oltp(spark, catalog: str, oltp_schema: str, row_count: int = 1
         )
     )
     postings.write.mode("append").saveAsTable(f"{fq}.customer_transaction")
+    spark_oltp.seed_case15(spark, fq, next_start)
     spark_oltp._write_entity_links(spark, fq)
     snapshot_tables(
         spark,
@@ -481,6 +496,10 @@ def etl_next_months(
     lines = spark.table(f"{oltp}.customer_order_line")
     spark_etl.sales_facts(lines, orders).filter(in_window).write.mode("append").saveAsTable(f"{star}.fact_sales")
     spark_etl.return_facts(orders, lines).filter(in_window).write.mode("append").saveAsTable(f"{star}.fact_returns")
+    if spark.catalog.tableExists(f"{star}.dim_address"):
+        spark_etl.order_event_facts(orders, spark.table(f"{star}.dim_address")).filter(in_window).write.mode(
+            "append"
+        ).saveAsTable(f"{star}.fact_order_event")
     snapshot = date(window_end.year, window_end.month, 1)
     while snapshot <= window_end:
         spark_etl.inventory_facts(

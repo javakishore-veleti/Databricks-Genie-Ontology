@@ -51,19 +51,24 @@ ASSET_DOMAINS: dict[str, list[str]] = {
     "dim_account": ["Finance", "Customer"],
     "dim_transaction_type": ["Finance"],
     "dim_counterparty": ["Finance"],
+    "dim_region": ["Sales", "Customer"],
+    "dim_address": ["Customer"],
     "fact_sales": ["Sales", "Finance"],
     "fact_returns": ["Customer"],
     "fact_inventory": ["Supply Chain"],
     "fact_transaction": ["Finance"],
+    "fact_order_event": ["Sales", "Customer"],
     "mv_sales_performance": ["Sales", "Finance"],
     "mv_customer_returns": ["Customer"],
     "mv_inventory_health": ["Supply Chain"],
+    "mv_order_event": ["Sales", "Customer"],
 }
 
 METRIC_VIEWS = {
     "mv_sales_performance",
     "mv_customer_returns",
     "mv_inventory_health",
+    "mv_order_event",
 }
 
 AGENT_TITLE = "Retail Analytics Genie"
@@ -76,10 +81,12 @@ segment/region, and store region/channel."""
 
 AGENT_INSTRUCTIONS = """You are a retail analytics assistant for Northwind Retail.
 
-- Always prefer the metric views (mv_sales_performance, mv_customer_returns,
-  mv_inventory_health) over querying raw tables directly.
-- "Revenue" or "sales" means the total_revenue measure in mv_sales_performance,
-  not list price or unit cost.
+- For order timing, ship-to vs bill-to, and impossible geo, use
+  mv_order_event / fact_order_event (hour-level order_ts, shipping_region_key).
+- fact_sales and fact_inventory are STALE merchandising snapshots. Do not use
+  them for fraud or same-hour geography. Prefer mv_order_event.
+- "Revenue" or "sales" for merchandising still means total_revenue in
+  mv_sales_performance (stale line-grain).
 - "Return rate" is not a stored measure - compute it as
   mv_customer_returns.return_amount / mv_sales_performance.total_revenue for the
   same time period and dimension slice, and say so when you do.
@@ -90,6 +97,7 @@ AGENT_INSTRUCTIONS = """You are a retail analytics assistant for Northwind Retai
 SAMPLE_QUESTIONS = [
     "What was total revenue last quarter by product category?",
     "What's our customer return rate this year vs last year?",
+    "Which customers have orders in two shipping regions within one hour?",
     "Which region has the highest revenue but also high returns?",
     "What is the average order value by customer segment?",
     "Which products have the lowest average stock on hand?",
@@ -173,12 +181,66 @@ Ask things like:
 - "Which region has the highest revenue but also high returns?"
 - "Which products have the lowest average stock on hand?"
 
-For metric definitions, see Total Revenue and Customer Return Rate.""",
+For metric definitions, see Total Revenue, Customer Return Rate, and Impossible Geo.
+fact_sales and fact_inventory are STALE merchandising snapshots.""",
         "related_assets": [
             "Retail Analytics Genie",
             "mv_sales_performance",
             "mv_customer_returns",
             "mv_inventory_health",
+            "mv_order_event",
+        ],
+    },
+    {
+        "name": "Impossible Geo",
+        "domain": "Customer",
+        "synonyms": ["impossible geo", "two regions one hour", "case 15"],
+        "description": (
+            "Same customer with two fact_order_event rows whose shipping regions differ "
+            "and order_ts is at most 60 minutes apart."
+        ),
+        "body": """Definition
+Impossible Geo (Fraud Case 15) is two orders for one customer shipped to
+different dim_region values with order_ts at most one hour apart.
+
+Formula: join fact_order_event to itself on customer_key where
+shipping_region_key differs and unix_timestamp(later) - unix_timestamp(earlier)
+<= 3600.
+
+Do not use customer.region (home, static) or fact_sales / fact_inventory (STALE,
+no hour, no shipping address). Seeded rows use address_id suffix -AGEO
+(West vs Northeast, 25 minutes).
+
+See also: fact_order_event, dim_address, dim_region.""",
+        "related_assets": [
+            "fact_order_event",
+            "dim_address",
+            "dim_region",
+            "mv_order_event",
+            "Fraud Geo Agent",
+        ],
+    },
+    {
+        "name": "Order Event Fact",
+        "domain": "Sales",
+        "synonyms": ["order event", "fact_order_event", "fraud order grain"],
+        "description": (
+            "Current order-grain fact for fraud: hour-level order_ts, ship/bill addresses, "
+            "and regions. fact_sales is STALE line-grain merchandising only."
+        ),
+        "body": """Definition
+fact_order_event is one row per customer_order. It carries order_ts (hour),
+shipping_region_key, billing_region_key, ship_ne_bill, and cross_region.
+
+Business use
+Velocity, ship-to≠bill-to, and Impossible Geo read this fact (or mv_order_event).
+fact_sales and fact_inventory remain in the catalog as STALE merchandising
+tables for Retail Analytics history only.""",
+        "related_assets": [
+            "fact_order_event",
+            "mv_order_event",
+            "dim_address",
+            "dim_region",
         ],
     },
 ]

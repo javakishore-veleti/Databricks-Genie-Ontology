@@ -7,7 +7,9 @@ import pandas as pd
 
 from ecommerce_genie_ontology.common.constants.schema_ddl import (
     dim_counterparty_seed,
+    dim_region_seed,
     dim_transaction_type_seed,
+    fraud_star_statements,
     funds_star_statements,
     oltp_statements,
     sales_star_statements,
@@ -39,17 +41,20 @@ COMMENT 'Genie One + Genie Ontology demo catalog (Northwind Retail sales analyti
     facade.sql(
         f"""
 CREATE SCHEMA IF NOT EXISTS {fq}
-COMMENT 'Star schema: sales, returns, inventory, and funds-movement facts with conformed dimensions'
+COMMENT 'Star schema: fraud-current order events plus STALE sales/inventory merchandising facts'
 """
     )
     for statement in oltp_statements(facade.fq_oltp):
         facade.sql(statement)
     for statement in sales_star_statements(fq):
         facade.sql(statement)
+    for statement in fraud_star_statements(fq):
+        facade.sql(statement)
     for statement in funds_star_statements(fq):
         facade.sql(statement)
     facade.sql(dim_transaction_type_seed(fq))
     facade.sql(dim_counterparty_seed(fq))
+    facade.sql(dim_region_seed(fq))
     facade.sql(f"USE CATALOG {facade.catalog}")
     facade.sql(f"USE SCHEMA {facade.schema_name}")
     print("Tables created.")
@@ -73,6 +78,9 @@ def _add_constraints(facade: ProvisionWorkspaceFacade) -> None:
         f"ALTER TABLE {fq}.dim_account ADD CONSTRAINT pk_dim_account PRIMARY KEY (account_key)",
         f"ALTER TABLE {fq}.dim_counterparty ADD CONSTRAINT pk_dim_counterparty PRIMARY KEY (counterparty_key)",
         f"ALTER TABLE {fq}.fact_transaction ADD CONSTRAINT pk_fact_transaction PRIMARY KEY (transaction_id)",
+        f"ALTER TABLE {fq}.dim_region ADD CONSTRAINT pk_dim_region PRIMARY KEY (region_key)",
+        f"ALTER TABLE {fq}.dim_address ADD CONSTRAINT pk_dim_address PRIMARY KEY (address_key)",
+        f"ALTER TABLE {fq}.fact_order_event ADD CONSTRAINT pk_fact_order_event PRIMARY KEY (order_id)",
         f"ALTER TABLE {oltp}.ingestion_tracker ADD CONSTRAINT pk_ingestion_tracker PRIMARY KEY (tracker_id)",
         f"ALTER TABLE {oltp}.ingestion_log ADD CONSTRAINT pk_ingestion_log PRIMARY KEY (log_id)",
         f"ALTER TABLE {oltp}.analytics_log ADD CONSTRAINT pk_analytics_log PRIMARY KEY (analytics_id)",
@@ -98,6 +106,15 @@ def _add_constraints(facade: ProvisionWorkspaceFacade) -> None:
         f"ALTER TABLE {fq}.fact_transaction ADD CONSTRAINT fk_txn_account FOREIGN KEY (account_key) REFERENCES {fq}.dim_account (account_key)",
         f"ALTER TABLE {fq}.fact_transaction ADD CONSTRAINT fk_txn_type FOREIGN KEY (type_key) REFERENCES {fq}.dim_transaction_type (type_key)",
         f"ALTER TABLE {fq}.fact_transaction ADD CONSTRAINT fk_txn_cp FOREIGN KEY (counterparty_key) REFERENCES {fq}.dim_counterparty (counterparty_key)",
+        f"ALTER TABLE {fq}.dim_address ADD CONSTRAINT fk_address_customer FOREIGN KEY (customer_key) REFERENCES {fq}.dim_customer (customer_key)",
+        f"ALTER TABLE {fq}.dim_address ADD CONSTRAINT fk_address_region FOREIGN KEY (region_key) REFERENCES {fq}.dim_region (region_key)",
+        f"ALTER TABLE {fq}.fact_order_event ADD CONSTRAINT fk_order_event_date FOREIGN KEY (date_key) REFERENCES {fq}.dim_date (date_key)",
+        f"ALTER TABLE {fq}.fact_order_event ADD CONSTRAINT fk_order_event_customer FOREIGN KEY (customer_key) REFERENCES {fq}.dim_customer (customer_key)",
+        f"ALTER TABLE {fq}.fact_order_event ADD CONSTRAINT fk_order_event_store FOREIGN KEY (store_key) REFERENCES {fq}.dim_store (store_key)",
+        f"ALTER TABLE {fq}.fact_order_event ADD CONSTRAINT fk_order_event_bill_addr FOREIGN KEY (billing_address_key) REFERENCES {fq}.dim_address (address_key)",
+        f"ALTER TABLE {fq}.fact_order_event ADD CONSTRAINT fk_order_event_ship_addr FOREIGN KEY (shipping_address_key) REFERENCES {fq}.dim_address (address_key)",
+        f"ALTER TABLE {fq}.fact_order_event ADD CONSTRAINT fk_order_event_bill_region FOREIGN KEY (billing_region_key) REFERENCES {fq}.dim_region (region_key)",
+        f"ALTER TABLE {fq}.fact_order_event ADD CONSTRAINT fk_order_event_ship_region FOREIGN KEY (shipping_region_key) REFERENCES {fq}.dim_region (region_key)",
     ]
     for stmt in pk_statements + fk_statements:
         facade.sql_ok(stmt)
