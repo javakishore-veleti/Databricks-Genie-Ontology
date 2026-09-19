@@ -16,11 +16,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-mcp = ["mcp>=2.2.0"]
+mcp = ["mcp>=2.2.0", "pyctuator>=1.2.0"]
 langgraph = ["langgraph>=0.2.0", "langchain-core>=0.3.0"]
 google-adk = ["google-adk>=1.15.0"]
 agents = [
     "mcp>=2.2.0",
+    "pyctuator>=1.2.0",
     "langgraph>=0.2.0",
     "langchain-core>=0.3.0",
     "google-adk>=1.15.0",

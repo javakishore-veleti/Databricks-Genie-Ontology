@@ -12,8 +12,6 @@ from ecommerce_genie_ontology.mcp import tools as mcp_tools
 
 try:
     from mcp.server.mcpserver import MCPServer
-    from starlette.requests import Request
-    from starlette.responses import HTMLResponse, JSONResponse
 except ImportError as exc:  # pragma: no cover
     raise SystemExit("Install the MCP extra: uv sync --extra mcp") from exc
 
@@ -49,31 +47,59 @@ mcp.tool()(mcp_tools.etl_star_cdc)
 mcp.tool()(mcp_tools.query_dataset)
 
 
-def _health() -> dict[str, str]:
-    return {
-        "status": "ok",
-        "service": "mcp-ecommerce-oltp",
-        "mcp": "/mcp",
-    }
+def _http_app(host: str, port: int):
+    """FastAPI host: Pyctuator (/actuator) + MCP streamable HTTP (/mcp)."""
+    import os
+    from contextlib import asynccontextmanager
 
+    from fastapi import FastAPI
+    from fastapi.responses import RedirectResponse
+    from pyctuator.endpoints import Endpoints
+    from pyctuator.pyctuator import Pyctuator
 
-@mcp.custom_route("/", methods=["GET"])
-async def root(_request: Request) -> HTMLResponse:
-    body = _health()
-    return HTMLResponse(
-        "<!doctype html><html><head><meta charset='utf-8'>"
-        "<title>mcp-ecommerce-oltp</title></head><body>"
-        "<h1>mcp-ecommerce-oltp</h1>"
-        f"<p>status: {body['status']}</p>"
-        "<p>MCP tools: <code>/mcp</code> (Playground / Supervisor, not a browser page)</p>"
-        "<p>Health: <code>/health</code></p>"
-        "</body></html>"
+    mcp_asgi = mcp.streamable_http_app(host=host, streamable_http_path="/mcp")
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        manager = getattr(mcp, "session_manager", None)
+        if manager is not None:
+            async with manager.run():
+                yield
+            return
+        async with mcp_asgi.router.lifespan_context(mcp_asgi):
+            yield
+
+    app = FastAPI(
+        title="mcp-ecommerce-oltp",
+        description="Custom MCP for fraud analytics sessions on retail_oltp / retail_star.",
+        lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
     )
 
+    @app.get("/")
+    async def root() -> RedirectResponse:
+        return RedirectResponse("/actuator/health")
 
-@mcp.custom_route("/health", methods=["GET"])
-async def health(_request: Request) -> JSONResponse:
-    return JSONResponse(_health())
+    @app.get("/health")
+    async def health_alias() -> RedirectResponse:
+        return RedirectResponse("/actuator/health")
+
+    public = os.getenv("DATABRICKS_APP_URL", "").rstrip("/") or f"http://{host}:{port}"
+    Pyctuator(
+        app,
+        "mcp-ecommerce-oltp",
+        app_url=public,
+        pyctuator_endpoint_url=f"{public}/actuator",
+        registration_url=None,
+        app_description="Custom MCP for fraud analytics sessions on retail_oltp / retail_star.",
+        additional_app_info={"mcp": "/mcp"},
+        disabled_endpoints=(
+            Endpoints.ENV | Endpoints.LOGFILE | Endpoints.HTTP_TRACE | Endpoints.LOGGERS
+        ),
+    )
+    app.mount("/", mcp_asgi)
+    return app
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -91,11 +117,14 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "8000")))
     args = parser.parse_args(argv)
     if args.http or os.getenv("MCP_TRANSPORT", "").lower() == "http":
-        mcp.run(
-            transport="streamable-http",
-            host=args.host,
-            port=args.port,
-            streamable_http_path="/mcp",
-        )
+        try:
+            import uvicorn
+        except ImportError as exc:  # pragma: no cover
+            raise SystemExit("Install uvicorn to serve MCP over HTTP") from exc
+        try:
+            app = _http_app(args.host, args.port)
+        except ImportError as exc:  # pragma: no cover
+            raise SystemExit("Install pyctuator for HTTP actuator + MCP") from exc
+        uvicorn.run(app, host=args.host, port=args.port)
         return
     mcp.run(transport="stdio")

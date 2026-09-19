@@ -530,7 +530,8 @@ and the ten fraud specialists (`velocity`, `address_link`, `ship_bill`,
 The custom MCP is `ecommerce-oltp-mcp` in
 `src/ecommerce_genie_ontology/mcp/`. GitHub Action **Step 03** publishes it as
 Databricks App `mcp-ecommerce-oltp` (name prefix `mcp-` so Playground /
-Supervisor list it). The App URL `GET /` and `GET /health` return ok;
+Supervisor list it). The App URL uses [Pyctuator](https://github.com/SolarEdgeTech/pyctuator)
+(`GET /` → `/actuator/health`, plus `/actuator/info` and `/actuator/metrics`);
 tools stay on `{APP_URL}/mcp`. LangGraph, Google ADK, Cursor, and Claude Desktop can
 also call it over stdio. Portal chat reaches the same functions through
 FastAPI facades. Classic Genie spaces do not attach this App; they stay on
