@@ -64,7 +64,7 @@ class Settings:
             warehouse_name=optional_env("DATABRICKS_WAREHOUSE_NAME", "ecommerce-genie-ontology"),
             workspace_name=optional_env("DATABRICKS_WORKSPACE_NAME", "ecommerce-genie-ontology"),
             catalog=optional_env("DATABRICKS_CATALOG", "ecommerce_genie_ontology"),
-            schema=optional_env("DATABRICKS_SCHEMA", "retail_star"),
+            schema=_star_schema(optional_env("DATABRICKS_SCHEMA", "retail_star")),
             oltp_schema=optional_env("DATABRICKS_OLTP_SCHEMA", "retail_oltp"),
             customer_count=optional_int("DATABRICKS_OLTP_CUSTOMERS", 200),
             orders_per_year=optional_int("DATABRICKS_OLTP_ORDERS_PER_YEAR", 25000),
@@ -82,3 +82,7 @@ class Settings:
             genie_parent_path=optional_env("GENIE_PARENT_PATH"),
             env_file=env_file,
         )
+
+
+def _star_schema(name: str) -> str:
+    return "retail_star" if name in {"", "retail_demo"} else name

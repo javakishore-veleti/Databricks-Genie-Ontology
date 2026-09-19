@@ -47,7 +47,10 @@ def required_env(name: str) -> str:
 
 
 def optional_env(name: str, default: str = "") -> str:
-    return os.getenv(name, default).strip()
+    value = os.getenv(name)
+    if value is None or not str(value).strip():
+        return default
+    return str(value).strip()
 
 
 def optional_int(name: str, default: int) -> int:

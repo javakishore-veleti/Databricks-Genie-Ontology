@@ -31,6 +31,10 @@ def main() -> None:
     present: list[str] = []
     for key in KEYS:
         value = os.environ.get(key, "").strip()
+        if key == "DATABRICKS_SCHEMA" and value in {"", "retail_demo"}:
+            value = "retail_star"
+        if key == "DATABRICKS_OLTP_SCHEMA" and not value:
+            value = "retail_oltp"
         if not value:
             continue
         lines.append(f"{key}={value}")
