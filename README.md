@@ -12,23 +12,33 @@ implements the same interfaces.
 
 ## Business Context
 
-This repository is the **system of record and data product** for sales and
-customer funds movement. We own OLTP (`customer`, `customer_address`,
-`customer_order`, `customer_order_line`, `customer_order_shipment`) plus
-conformed dimensions and facts. Other teams build fraud agents; we publish a
-governed MCP server so those agents stay framework-agnostic.
+Customer behavior is how a person buys, pays, ships, and moves money over
+time: orders and lines, the addresses they use, channel, status, and — once
+funds movement is in scope — wires, cash, book transfers, CDs, brokerage,
+demand drafts, and cards. Most of that activity is legitimate. What matters is
+the baseline per customer: typical amount, velocity, counterparties, and
+whether a new address or a sudden outflow sits outside changing transaction
+behaviors.
 
-Target volume to design for: **100,000 customers**, **30,000 transactions per
-customer per year**, **10 years** of history (**300,000 transactions per
-customer**). Dims and facts stay aligned to that OLTP. Transaction types will
-expand beyond retail checkout to funds movement (wire, cash, book transfer,
-CD, brokerage, demand draft, credit card). Agents are **customer-scoped**: MCP
+The purpose of this context is fraud detection: pick out abnormal behaviors
+and rare fraud cases in real time, while keeping false alarms down. Fixed
+thresholds and rule-based checks miss identity theft and automated attacks,
+and they raise false-positives when fraudulent transactions are extremely rare
+compared with legitimate ones. Amount, sudden loss of balance, and type of
+movement are the high-ranking signals; agents should use them for risk
+analysis without dumping ten years of rows into a model.
+
+Sales and funds movement live in OLTP (`customer`, `customer_address`,
+`customer_order`, `customer_order_line`, `customer_order_shipment`) plus
+conformed dimensions and facts. Design volume is **100,000 customers**,
+**30,000 transactions per customer per year**, and **10 years** of history
+(**300,000 transactions per customer**). Agents are **customer-scoped**: MCP
 returns only `customer_id` values for a date range, then each agent loops
 (parallel or sequential) and hydrates **one customer** from star schema and/or
 OLTP. Databricks **Genie** agents run in the workspace. **Non-Genie** agents
-(LangGraph, Google ADK, AWS Strands) are invoked from the portal through
-FastAPI and this MCP server. In-repo LangGraph and Google ADK packages are
-conformance clients that keep the MCP tools honest.
+(LangGraph, Google ADK, AWS Strands) come through the portal via FastAPI and
+MCP. The LangGraph and Google ADK packages are conformance clients so the MCP
+tools stay honest.
 
 ## Business Data Architecture
 
@@ -37,57 +47,7 @@ Do not hang wire transfers or card dues off `customer_order` / `fact_sales`.
 Add a second grain: **posting** (`customer_transaction` / `fact_transaction`)
 with account, type, counterparty, amount, and balance before/after.
 
-```mermaid
-flowchart TB
-  subgraph owners [This repo: data owners]
-    DC[dim_customer]
-    DD[dim_date]
-    DA[dim_account]
-    DT[dim_transaction_type]
-    DP[dim_counterparty]
-    FO[OLTP sales: order / line / shipment]
-    FS[fact_sales / fact_returns]
-    TX[OLTP customer_transaction]
-    FT[fact_transaction]
-    DC --> FO
-    DC --> TX
-    DD --> FS
-    DD --> FT
-    DA --> TX
-    DA --> FT
-    DT --> TX
-    DT --> FT
-    DP --> TX
-    DP --> FT
-    FO --> FS
-    TX --> FT
-  end
-
-  subgraph serve [How agents reach the data]
-    MCP[Consumer MCP: list_customer_ids then get_customer_oltp / get_customer_star]
-    API[Portal FastAPI]
-    GE[Databricks Genie Agents]
-    LG[LangGraph]
-    ADK[Google ADK]
-    ST[AWS Strands]
-  end
-
-  FS --> MCP
-  FT --> MCP
-  FO --> MCP
-  TX --> MCP
-  FS --> GE
-  FT --> GE
-  API --> LG
-  API --> ADK
-  API --> ST
-  LG --> MCP
-  ADK --> MCP
-  ST --> MCP
-
-  classDef ownersBox fill:#2563eb,stroke:#1e40af,color:#ffffff
-  class owners ownersBox
-```
+![Business data architecture](docs/images/business-data-architecture.png)
 
 **MCP contract (customer first)**
 
