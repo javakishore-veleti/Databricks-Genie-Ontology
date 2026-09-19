@@ -50,7 +50,14 @@ class AdapterDatabricksObjectsFactory(ObjectsFactory):
         return factory
 
     def settings(self) -> Settings:
-        return self.singleton("settings", lambda: self._settings or Settings.load())
+        return self.singleton("settings", self._resolve_settings)
+
+    def _resolve_settings(self) -> Settings:
+        if self._settings is not None:
+            return self._settings
+        if self._session is not None:
+            return Settings.from_workspace_context(self._session.context)
+        return Settings.load()
 
     def session(self) -> WorkspaceSession:
         return self.singleton(

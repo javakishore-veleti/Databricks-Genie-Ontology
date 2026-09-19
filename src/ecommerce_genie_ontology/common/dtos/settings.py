@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from ecommerce_genie_ontology.common.dtos.workspace import WorkspaceContext
 from ecommerce_genie_ontology.common.utils.env import env_emails, load_env, optional_env, optional_int
 
 
@@ -47,13 +49,47 @@ class Settings:
         return f"{self.workspace_path.rstrip('/')}/notebooks"
 
     @classmethod
+    def from_workspace_context(cls, ctx: WorkspaceContext) -> Settings:
+        """Job-runtime settings from widgets. No PAT / OAuth — the cluster identity is enough."""
+        package = (ctx.package_path or "").rstrip("/")
+        workspace_path = (
+            package[: -len("/src")]
+            if package.endswith("/src")
+            else package or "/Workspace/Shared/ecommerce-genie-ontology"
+        )
+        return cls(
+            host="",
+            token="",
+            warehouse_id=ctx.warehouse_id,
+            warehouse_name="",
+            workspace_name="",
+            catalog=ctx.catalog,
+            schema=_star_schema(ctx.schema_name),
+            oltp_schema=ctx.oltp_schema,
+            customer_count=ctx.customer_count,
+            orders_per_year=ctx.orders_per_year,
+            year_count=ctx.year_count,
+            admin_emails=ctx.admin_emails,
+            workspace_path=workspace_path,
+            agent_title=ctx.agent_title,
+            client_id="",
+            client_secret="",
+            genie_host="",
+            genie_token="",
+            genie_space_id=ctx.space_id,
+            genie_parent_path=ctx.parent_path,
+            env_file=None,
+        )
+
+    @classmethod
     def load(cls) -> Settings:
         env_file = load_env()
         host = optional_env("DATABRICKS_HOST").rstrip("/")
         token = optional_env("DATABRICKS_TOKEN")
         client_id = optional_env("DATABRICKS_CLIENT_ID")
         client_secret = optional_env("DATABRICKS_CLIENT_SECRET")
-        if not token and not (client_id and client_secret):
+        on_cluster = bool(os.getenv("DATABRICKS_RUNTIME_VERSION"))
+        if not on_cluster and not token and not (client_id and client_secret):
             raise SystemExit(
                 "Set DATABRICKS_TOKEN, or DATABRICKS_CLIENT_ID and DATABRICKS_CLIENT_SECRET, in .env."
             )
